@@ -1,0 +1,34 @@
+REQUIRED_PLUGINS = %w(vagrant-libvirt)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+  Vagrant.has_plugin?(plugin) || (
+    puts "The #{plugin} plugin is required. Please install it with:"
+    puts "$ vagrant plugin install #{plugin}"
+    false
+  )
+end
+
+KEYFILE = File.join(__dir__, '..', 'libvirt_host', '.vagrant', 'machines', 'default', 'virtualbox', 'private_key')
+REMOTE_HOST = '192.168.56.4'
+
+Vagrant.configure("2") do |config|
+    # config.vm.box = "generic/ubuntu2010" # This boots.
+    # config.vm.box = "generic/opensuse15" # This boots into an emergency shell.
+    config.vm.box = "k8s_ncn" # This stops at a blinking cursor right after the opensuse splash screen.
+    config.vm.hostname = "k8s-ncn"
+    config.vm.synced_folder ".", "/vagrant", type: "rsync"
+    config.vm.provider :libvirt do |libvirt|
+        libvirt.default_prefix = "csm-"
+        libvirt.graphics_type = "vnc"
+        libvirt.graphics_ip = "0.0.0.0"
+        libvirt.graphics_port = "5900"
+        # libvirt.cmd_line = "rd.lvm=0 rd.luks=0 rd.md=0 rd.md.imsm=0 rd.dm=0 rd.md.ddf=0 rd.md.conf=0 rd.multipath=0 rd.bootif=0"
+        libvirt.cpus = 2
+        libvirt.memory = 2048
+        libvirt.machine_type = 'q35'
+        libvirt.uri = "qemu+ssh://root@#{REMOTE_HOST}/session?keyfile=#{KEYFILE}"
+        libvirt.system_uri = "qemu+ssh://root@#{REMOTE_HOST}/system?keyfile=#{KEYFILE}"
+    end
+    # config.vm.provision "ansible_local" do |ansible|
+    #     ansible.playbook = "playbook.yml"
+    # end
+end
