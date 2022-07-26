@@ -3,7 +3,9 @@ set -e
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BOX_DIR=$SCRIPT_DIR/images
 STAGE_DIR=$BOX_DIR/temp
+BOOT_DIR=$SCRIPT_DIR/libvirt_host/boot
 mkdir -p $STAGE_DIR
+mkdir -p $BOOT_DIR
 
 BRANCH="${1:-main}"
 IMAGE_NAME=box.img
@@ -22,6 +24,8 @@ source /dev/stdin < <(curl -fsSL https://raw.githubusercontent.com/Cray-HPE/csm/
 QCOW2_URL=$(echo ${KUBERNETES_ASSETS[0]} | sed 's/squashfs/qcow2/g')
 echo "Downloading image from $QCOW2_URL"
 curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $STAGE_DIR/$IMAGE_NAME $QCOW2_URL
+curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $BOOT_DIR/k8s_ncn.kernel ${KUBERNETES_ASSETS[1]}
+curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $BOOT_DIR/k8s_ncn_initrd.xz ${KUBERNETES_ASSETS[2]}
 
 # Create a Vagrant box.
 cat <<-EOF > $STAGE_DIR/Vagrantfile

@@ -15,13 +15,17 @@ Vagrant.configure("2") do |config|
     # config.vm.box = "generic/opensuse15" # This boots into an emergency shell.
     config.vm.box = "k8s_ncn" # This stops at a blinking cursor right after the opensuse splash screen.
     config.vm.hostname = "k8s-ncn"
+    config.vm.boot_timeout = 600
     config.vm.synced_folder ".", "/vagrant", type: "rsync"
     config.vm.provider :libvirt do |libvirt|
         libvirt.default_prefix = "csm-"
         libvirt.graphics_type = "vnc"
         libvirt.graphics_ip = "0.0.0.0"
         libvirt.graphics_port = "5900"
-        # libvirt.cmd_line = "rd.lvm=0 rd.luks=0 rd.md=0 rd.md.imsm=0 rd.dm=0 rd.md.ddf=0 rd.md.conf=0 rd.multipath=0 rd.bootif=0"
+        libvirt.serial :type => "file", :source => {:path => "/var/log/csm_k8s.log"}
+        libvirt.kernel = '/vagrant/boot/k8s_ncn.kernel'
+        libvirt.initrd = '/vagrant/boot/k8s_ncn_initrd.xz'
+        libvirt.cmd_line = "mitigations=auto debug rd.luks=0 rd.md=0 rd.md.imsm=0 rd.dm=0 rd.md.ddf=0 rd.md.conf=0"
         libvirt.cpus = 2
         libvirt.memory = 2048
         libvirt.machine_type = 'q35'
