@@ -70,7 +70,7 @@ BOOT_PARAMS = %w(
   xname=x3000c0s7b0n0
   metal.no-wipe=1
   metal.disks=1
-  root=/dev/vda0
+  root=/dev/vda2
 )
 
 Vagrant.configure("2") do |config|
@@ -85,7 +85,7 @@ Vagrant.configure("2") do |config|
         libvirt.graphics_type = "vnc"
         libvirt.graphics_ip = "0.0.0.0"
         libvirt.graphics_port = "5900"
-        libvirt.serial :type => "file", :source => {:path => "/var/log/ncn_k8s.log"}
+        # libvirt.serial :type => "file", :source => {:path => "/var/log/ncn_k8s.log"}
         libvirt.kernel = '/vagrant/boot/k8s_ncn.kernel'
         libvirt.initrd = '/vagrant/boot/k8s_ncn_initrd.xz'
         libvirt.cmd_line = BOOT_PARAMS.join(' ')
