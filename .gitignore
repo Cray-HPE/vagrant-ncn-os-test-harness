@@ -1,3 +1,4 @@
 .vagrant/
 images/
 boot/
+nohup.out
