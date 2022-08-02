@@ -54,8 +54,9 @@ BOOT_PARAMS = %w(
   rd.luks.crypttab=0
   rd.lvm.conf=0
   rd.lvm=1
-  rd.auto=1
-  rd.md=1
+  rd.auto=0
+  rd.md=0
+  rd.md.conf=0
   rd.dm=0
   rd.neednet=0
   rd.peerdns=0
@@ -70,18 +71,21 @@ BOOT_PARAMS = %w(
   xname=x3000c0s7b0n0
   metal.no-wipe=1
   metal.disks=1
-  root=/dev/vda2
+  root=/dev/sda2
 )
 
 Vagrant.configure("2") do |config|
     # config.vm.box = "generic/ubuntu2010" # This boots.
-    # config.vm.box = "generic/opensuse15" # This boots into an emergency shell.
+    # config.vm.box = "generic/opensuse15" # This boots.
     config.vm.box = "k8s_ncn" # This stops at a blinking cursor right after the opensuse splash screen.
     config.vm.hostname = "k8s-ncn"
     config.vm.boot_timeout = 600
     config.vm.synced_folder ".", "/vagrant", type: "rsync"
     config.vm.provider :libvirt do |libvirt|
         libvirt.default_prefix = "csm-"
+        libvirt.boot 'hd'
+        libvirt.disk_device = "sda"
+        libvirt.disk_bus = "sata"
         libvirt.graphics_type = "vnc"
         libvirt.graphics_ip = "0.0.0.0"
         libvirt.graphics_port = "5900"
@@ -89,9 +93,11 @@ Vagrant.configure("2") do |config|
         libvirt.kernel = '/vagrant/boot/k8s_ncn.kernel'
         libvirt.initrd = '/vagrant/boot/k8s_ncn_initrd.xz'
         libvirt.cmd_line = BOOT_PARAMS.join(' ')
+        # libvirt.storage :file, size: '40G', path: 'box.img', allow_existing: true, shareable: true, device: 'vdb'
         libvirt.cpus = 2
         libvirt.memory = 2048
         libvirt.machine_type = 'q35'
+        # libvirt.vm.network :public_network, dev: "br0", mode: "bridge", type: "bridge", ip: "192.168.1.152"
         libvirt.uri = "qemu+ssh://root@#{REMOTE_HOST}/session?keyfile=#{KEYFILE}"
         libvirt.system_uri = "qemu+ssh://root@#{REMOTE_HOST}/system?keyfile=#{KEYFILE}"
     end
