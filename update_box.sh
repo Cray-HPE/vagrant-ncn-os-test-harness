@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
-set -e
+# set -x
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 STAGE_DIR=$SCRIPT_DIR/libvirt_host/images
 BOOT_DIR=$SCRIPT_DIR/libvirt_host/boot
 BRANCH="${1:-main}"
 IMAGE_NAME=box.img
 BOX_NAME=k8s_ncn
+
+declare -A ARGS=$@
+[[ $ARGS[*] =~ '--from-existing' ]] && FROM_EXISTING=1 || FROM_EXISTING=0 # Skips downloading new artifacts.
+[[ $ARGS[*] =~ '--no-purge' ]] && NO_PURGE=1 || NO_PURGE=0 # Skips deleting existing artifacts, vm, and image.
+
 if [[ -z "${ARTIFACTORY_USER}" || -z "${ARTIFACTORY_TOKEN}" ]]; then
     echo "Missing authentication information for image download. Please set ARTIFACTORY_USER and ARTIFACTORY_TOKEN environment variables."
     exit 1
@@ -16,10 +21,14 @@ function purge_old_assets() {
     cd $SCRIPT_DIR/k8s_ncn
     vagrant destroy -f || true
     cd $OLDPWD
-    rm -rf $STAGE_DIR
-    rm -rf $BOOT_DIR
+    cd $SCRIPT_DIR/libvirt_host
+    vagrant ssh -c "sudo virsh vol-delete k8s_ncn_vagrant_box_image_0_box.img --pool default"
+    cd $OLDPWD
+    [[ $FROM_EXISTING == 0 ]] && rm -rf $STAGE_DIR
+    [[ $FROM_EXISTING == 0 ]] && rm -rf $BOOT_DIR
 }
-[[ $1 == "--purge" || $2 == "--purge" ]] && purge_old_assets
+[[ $NO_PURGE == 1 ]] || purge_old_assets
+
 mkdir -p $STAGE_DIR
 mkdir -p $BOOT_DIR
 
@@ -28,14 +37,15 @@ echo "This operation requires about 40GB of free hard drive space. If you see wr
 echo "You current have ${FREE_DISK_SPACE} of free disk space."
 
 # Determine correct version of image and begin downloading.
-echo "Referencing image for the head of branch $BRANCH."
-source /dev/stdin < <(curl -fsSL https://raw.githubusercontent.com/Cray-HPE/csm/$BRANCH/assets.sh | grep -E -o -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
-QCOW2_URL=$(echo ${KUBERNETES_ASSETS[0]} | sed 's/squashfs/qcow2/g')
-echo "Downloading image from $QCOW2_URL"
-curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $STAGE_DIR/$IMAGE_NAME $QCOW2_URL
-curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $BOOT_DIR/k8s_ncn.kernel ${KUBERNETES_ASSETS[1]}
-curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $BOOT_DIR/k8s_ncn_initrd.xz ${KUBERNETES_ASSETS[2]}
-
+if [[ $FROM_EXISTING == 0 ]]; then
+    echo "Referencing image for the head of branch $BRANCH."
+    source /dev/stdin < <(curl -fsSL https://raw.githubusercontent.com/Cray-HPE/csm/$BRANCH/assets.sh | grep -E -o -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
+    QCOW2_URL=$(echo ${KUBERNETES_ASSETS[0]} | sed 's/squashfs/qcow2/g')
+    echo "Downloading image from $QCOW2_URL"
+    curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $STAGE_DIR/$IMAGE_NAME $QCOW2_URL
+    curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $BOOT_DIR/k8s_ncn.kernel ${KUBERNETES_ASSETS[1]}
+    curl -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $BOOT_DIR/k8s_ncn_initrd.xz ${KUBERNETES_ASSETS[2]}
+fi
 # Create a Vagrant box.
 cat <<-EOF > $STAGE_DIR/Vagrantfile
 Vagrant.configure("2") do |config|
