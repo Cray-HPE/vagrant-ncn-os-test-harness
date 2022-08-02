@@ -13,3 +13,7 @@ cp /home/vagrant/.ssh/authorized_keys /root/.ssh/
 
 virsh net-start default
 virsh net-autostart default
+
+virsh pool-define-as vagrant_images dir - - - - "/vagrant/images"
+virsh pool-start vagrant_images
+virsh pool-autostart vagrant_images
