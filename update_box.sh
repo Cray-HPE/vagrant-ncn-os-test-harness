@@ -4,15 +4,22 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 STAGE_DIR=$SCRIPT_DIR/libvirt_host/images
 BOOT_DIR=$SCRIPT_DIR/libvirt_host/boot
 BRANCH="${1:-main}"
+[[ $BRANCH == "1.3" ]] && BRANCH="main" # The version our main branch tracks.
+[[ $BRANCH != "main" ]] && BRANCH="release/${BRANCH}" # Converts it to a release branch.
 IMAGE_NAME=box.img
 BOX_NAME=k8s_ncn
 
 declare -A ARGS=$@
-[[ $ARGS[*] =~ '--from-existing' ]] && FROM_EXISTING=1 || FROM_EXISTING=0 # Skips downloading new artifacts.
-[[ $ARGS[*] =~ '--no-purge' ]] && NO_PURGE=1 || NO_PURGE=0 # Skips deleting existing artifacts, vm, and image.
+[[ ! $ARGS[*] =~ '--from-existing' ]]; FROM_EXISTING=$? # Skips downloading new artifacts.
+[[ ! $ARGS[*] =~ '--no-purge' ]]; NO_PURGE=$? # Skips deleting existing artifacts, vm, and image.
 
 if [[ -z "${ARTIFACTORY_USER}" || -z "${ARTIFACTORY_TOKEN}" ]]; then
     echo "Missing authentication information for image download. Please set ARTIFACTORY_USER and ARTIFACTORY_TOKEN environment variables."
+    exit 1
+fi
+
+if [[ -z "${VAGRANT_NCN_USER}" || -z "${VAGRANT_NCN_PASSWORD}" ]]; then
+    echo "Missing authentication information for ssh. Please set VAGRANT_NCN_USER and VAGRANT_NCN_PASSWORD environment variables."
     exit 1
 fi
 
@@ -69,13 +76,14 @@ cat <<-EOF > $STAGE_DIR/metadata.json
     "description": "This box contains a libvirt qcow2 image for testing the CSM K8s NCN image.",
     "provider": "libvirt",
     "format": "qcow2",
-    "virtual_size": 40
+    "virtual_size": 50
 }
 EOF
+# NOTE FOR ABOVE ^: virtual_size must be larger than the original size of 46, otherwise the partitions are destroyed.
 
 echo "Removing CSM dracut scripts from image..."
 cd $SCRIPT_DIR/libvirt_host
-vagrant ssh -c "sudo virt-customize -a /vagrant/images/box.img --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash'"
+vagrant ssh -c "sudo virt-customize -a /vagrant/images/box.img --root-password password:${VAGRANT_NCN_PASSWORD} --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash'"
 cd $OLDPWD
 
 # sudo chown $(whoami):admin $STAGE_DIR/$IMAGE_NAME
