@@ -17,3 +17,7 @@ virsh net-autostart default
 virsh pool-define-as vagrant_images dir - - - - "/vagrant/images"
 virsh pool-start vagrant_images
 virsh pool-autostart vagrant_images
+
+echo "/vagrant *(rw,sync,insecure,root_squash,no_subtree_check,fsid=25)" >> /etc/exports
+systemctl enable nfs-server
+systemctl start nfs-server
