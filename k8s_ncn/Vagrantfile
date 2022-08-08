@@ -28,7 +28,6 @@ UNUSED_BOOT_PARAMS = %w(
   pcie_ports=native
   rootfallback=LABEL=BOOTRAID
   initrd=initrd.img.xz
-  ds=nocloud-net\;s=http://10.1.1.2:8888/\;h=ncn-w001
   rd.live.squashimg=filesystem.squashfs
   rd.live.overlay=LABEL=ROOTRAID
   rd.live.overlay.thin=1
@@ -74,6 +73,7 @@ BOOT_PARAMS = %w(
   metal.no-wipe=1
   metal.disks=1
   root=/dev/vda2
+  ds=nocloud-net\;s=http://192.168.122.1/\;h=ncn-m001
 )
 
 Vagrant.configure("2") do |config|
