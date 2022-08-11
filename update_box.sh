@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# set -x
+set -e
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 STAGE_DIR=$SCRIPT_DIR/libvirt_host/images
 BOOT_DIR=$SCRIPT_DIR/libvirt_host/boot
@@ -43,25 +44,12 @@ declare -A ARGS=$@
 [[ ! $ARGS[*] =~ '--from-existing' ]]; FROM_EXISTING=$? # Skips downloading new artifacts.
 [[ $ARGS[*] =~ '--help' ]] && help && exit 0;
 
-if [[ -z "${ARTIFACTORY_USER}" || -z "${ARTIFACTORY_TOKEN}" ]]; then
-    echo "Missing authentication information for image download. Please set ARTIFACTORY_USER and ARTIFACTORY_TOKEN environment variables."
-    help
-    exit 1
-fi
-
-if [[ -z "${VAGRANT_NCN_USER}" || -z "${VAGRANT_NCN_PASSWORD}" ]]; then
-    echo "Missing authentication information for ssh. Please set VAGRANT_NCN_USER and VAGRANT_NCN_PASSWORD environment variables."
-    help
-    exit 1
-fi
-
 # Refresh ssh key in case libvirt_host has been recreated.
 ssh-keygen -R 192.168.56.4
 ssh-keyscan 192.168.56.4 >>~/.ssh/known_hosts
 
-cd $SCRIPT_DIR/libvirt_host
-vagrant up || $(echo "The libvirt_host must be up." && help && exit 1)
-cd $OLDPWD
+source $SCRIPT_DIR/scripts/env_handler.sh
+$SCRIPT_DIR/libvirt_host/start.sh
 
 function purge_old_assets() {
     echo "Destroying related VM and previous artifacts..."
