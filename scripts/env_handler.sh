@@ -25,7 +25,7 @@ if [[ -z "${ARTIFACTORY_USER}" || -z "${ARTIFACTORY_TOKEN}" ]]; then
 
     echo -n "What is your identity token for artifactory.algol60.net? "
     stty -echo; read -r ARTI_TOKEN; stty echo;
-    $SED_COMMAND "s/ARTIFACTORY_TOKEN=/ARTIFACTORY_TOKEN=${ARTI_TOKEN}/g" $ENV_FILE
+    $SED_COMMAND "s/ARTIFACTORY_TOKEN=/ARTIFACTORY_TOKEN=\"${ARTI_TOKEN}\"/g" $ENV_FILE
     unset -v ARTI_TOKEN
     echo "-"
 fi
@@ -45,7 +45,7 @@ if [[ -z "${VAGRANT_NCN_USER}" || -z "${VAGRANT_NCN_PASSWORD}" ]]; then
 
     echo -n "What should the password be for your local environment? "
     stty -echo; read -r NCN_VAGRANT_PASS; stty echo;
-    $SED_COMMAND "s/VAGRANT_NCN_PASSWORD=/VAGRANT_NCN_PASSWORD=${NCN_VAGRANT_PASS}/g" $ENV_FILE
+    $SED_COMMAND "s/VAGRANT_NCN_PASSWORD=/VAGRANT_NCN_PASSWORD=\"${NCN_VAGRANT_PASS}\"/g" $ENV_FILE
     unset -v NCN_VAGRANT_PASS
     echo "-"
 fi
