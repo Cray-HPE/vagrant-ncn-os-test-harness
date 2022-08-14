@@ -98,7 +98,7 @@ if [[ $FROM_EXISTING == 0 ]]; then
     echo "Referencing image for the head of branch $BRANCH."
     source /dev/stdin < <(curl -fsSL https://raw.githubusercontent.com/Cray-HPE/csm/$BRANCH/assets.sh | grep -E -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
     QCOW2_URL=$(echo ${KUBERNETES_ASSETS[0]} | sed 's/squashfs/qcow2/g')
-    
+
     smart_download $STAGE_DIR/$IMAGE_NAME $QCOW2_URL
     smart_download $BOOT_DIR/k8s_ncn.kernel ${KUBERNETES_ASSETS[1]}
     smart_download $BOOT_DIR/k8s_ncn_initrd.xz ${KUBERNETES_ASSETS[2]}
@@ -139,7 +139,9 @@ vagrant ssh -- -t <<-EOS
     sudo virt-customize \
         -a /vagrant/images/box.img \
         --root-password password:${VAGRANT_NCN_PASSWORD} \
-        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash'
+        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash' \
+        --run-command 'user add -m vagrant' \
+        --password vagrant:password:vagrant
 EOS
 cd $OLDPWD
 
