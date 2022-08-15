@@ -1,7 +1,15 @@
+if RbConfig::CONFIG['host_os'].match?(/^darwin/)
+    nfs_proto = 'udp'
+    nfs_vers = 3
+else
+    nfs_proto = 'tcp'
+    nfs_vers = 4
+end
+
 Vagrant.configure("2") do |config|
     config.vm.box = "generic/opensuse15"
     config.vm.network "private_network", ip: "192.168.56.4"
-    config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: false, nfs_version: 4
+    config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: nfs_proto, nfs_version: nfs_vers
     config.vm.hostname = "libvirthost"
     config.vm.provider "virtualbox" do |v|
         v.name = "libvirthost"
