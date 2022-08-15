@@ -83,9 +83,6 @@ function smart_download() {
 
 # Start Libvirthost if not started so we can use virt-customize to modify the image.
 $SCRIPT_DIR/libvirt_host/start.sh
-# Refresh ssh key in case libvirt_host has been recreated.
-ssh-keygen -R 192.168.56.4 > /dev/null 2>&1 || true
-ssh-keyscan 192.168.56.4 >>~/.ssh/known_hosts
 
 # Prepare asset directories
 [[ $FROM_EXISTING == 1 ]] || purge_old_assets
