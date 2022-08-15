@@ -24,6 +24,9 @@ Any of the scripts below may guide you through an interactive script to populate
 
 ### Libvirthost Appliance
 
+The following list represents ad-hoc procedures (not sequential steps) for common operations.
+All are performed from the k8s_ncn directory:
+
 - In the libvirt_host directory, use `vagrant halt` when stopping the environment to avoid needing to do this again.
 - If you do need to revert to a clean base use `vagrant snapshot restore base`.
 - To ssh in, run 'vagrant ssh'.
@@ -31,7 +34,8 @@ Any of the scripts below may guide you through an interactive script to populate
 
 ### K8s_NCN VM
 
-From the k8s_ncn directory:
+The following list represents ad-hoc procedures (not sequential steps) for common operations.
+All are performed from the k8s_ncn directory:
 
 - Run './start.sh' to provision a pristine VM.
 - Run 'vagrant snapshot save SNAPSHOT_NAME' to take snapshots of various states.
@@ -42,7 +46,7 @@ From the k8s_ncn directory:
 
 ### Downloading the latest NCN image
 
-- Simply run ./update_box.sh from the repo root directory to fetch the lates image. WARNING: This is destroy your existing k8s_ncn VM.
+- Simply run ./update_box.sh from the repo root directory to fetch the lates image. WARNING: This will destroy your existing k8s_ncn VM.
 
 ## TODO
 
