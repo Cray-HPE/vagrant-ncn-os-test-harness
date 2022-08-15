@@ -37,3 +37,7 @@ systemctl start nginx
 
 systemctl enable vboxadd-service
 systemctl start vboxadd-service
+
+vagrant snapshot save base
+
+echo "SUCCESS: Libvirthost VM provisioned successfully."
