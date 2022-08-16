@@ -19,6 +19,7 @@ fi
 function create_virt_pool() {
     POOL_NAME=$1
     POOL_PATH=$2
+    mkdir -p $POOL_PATH
     if [[ ! $(virsh pool-list | grep $POOL_NAME | grep active) ]]; then
         virsh pool-define-as $POOL_NAME dir - - - - $POOL_PATH
         virsh pool-start $POOL_NAME
@@ -26,6 +27,7 @@ function create_virt_pool() {
     fi
 }
 
+create_virt_pool "default" "/home/vagrant/pool"
 create_virt_pool "vagrant_images" "/vagrant/images"
 
 if [[ ! $(cat /etc/exports | grep guest_mount) ]]; then
@@ -43,7 +45,3 @@ systemctl start nginx
 
 systemctl enable vboxadd-service
 systemctl start vboxadd-service
-
-vagrant snapshot save base
-
-echo "SUCCESS: Libvirthost VM provisioned successfully."

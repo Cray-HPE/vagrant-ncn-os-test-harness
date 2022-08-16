@@ -8,9 +8,14 @@ exit unless REQUIRED_PLUGINS.all? do |plugin|
 end
 
 KEYFILE = File.join(__dir__, '..', 'libvirt_host', '.vagrant', 'machines', 'default', 'virtualbox', 'private_key')
-REMOTE_HOST = '192.168.56.4'
-# Boot params collected from ncn-w001:/metal/recovery/boot/grub2/grub.cfg
 
+# Optionally, set this to a remote lab machine running libvirt.
+REMOTE_HOST = ENV['LIBVIRT_HOST_IP']
+
+k8s_ncn_cpus = ENV['K8s_NCN_CPUS']
+k8s_ncn_memory = ENV['K8s_NCN_MEMORY']
+
+# Boot params collected from ncn-w001:/metal/recovery/boot/grub2/grub.cfg
 # Unused boot params collected here for reference only.
 UNUSED_BOOT_PARAMS = %w(
   bond=bond0:mgmt0,mgmt1:mode=802.3ad,xmit_hash_policy=layer2+3,lacp_rate=slow
@@ -86,23 +91,42 @@ Vagrant.configure("2") do |config|
     config.vm.boot_timeout = 600
     config.vm.provider :libvirt do |ncn|
         ncn.default_prefix = "csm-"
+
+        # Speeds up the boot a little by specifying exactly how to boot.
         ncn.boot 'hd'
         ncn.disk_device = "vda"
         ncn.disk_bus = "virtio"
+
+        # Enables vnc console access at the LIBVIRT_HOST_IP.
         ncn.graphics_type = "vnc"
         ncn.graphics_ip = "0.0.0.0"
         ncn.graphics_port = "5900"
+
+        # Referencing kernel and initrd in order to support passing boot params.
         ncn.kernel = '/vagrant/boot/k8s_ncn.kernel'
         ncn.initrd = '/vagrant/boot/k8s_ncn_initrd.xz'
         ncn.cmd_line = BOOT_PARAMS.join(' ')
-        ncn.cpus = 2
-        ncn.memory = 2048
+
+        # TODO: Make something a little smarter here for CPU core request.
+        ncn.cpus = k8s_ncn_cpus
+        ncn.memory = k8s_ncn_memory
+
+        # Enable KVM nested virtualization.
+        ncn.nested = true
+        ncn.cpu_mode = "host-passthrough"
+
+        # Maximizes compatibility for Intel-based machines.
         ncn.machine_type = 'q35'
-        # libvirt.vm.network :public_network, dev: "br0", mode: "bridge", type: "bridge", ip: "192.168.1.152"
+
+        # Tells Vagrant to orchestrate provisioning against the libvirt_host.
         ncn.uri = "qemu+ssh://root@#{REMOTE_HOST}/session?keyfile=#{KEYFILE}"
         ncn.system_uri = "qemu+ssh://root@#{REMOTE_HOST}/system?keyfile=#{KEYFILE}"
     end
+
+    # TODO: Move this to the fstab so it can survive a reboot.
     config.vm.provision "shell", inline: 'mount -t nfs -o rw 192.168.122.1:/vagrant /vagrant'
+
+    # TODO: Enable ansible testing procedure.
     # config.vm.provision "ansible_local" do |ansible|
     #     ansible.playbook = "playbook.yml"
     # end

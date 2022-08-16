@@ -1,15 +1,19 @@
 if RbConfig::CONFIG['host_os'].match?(/^darwin/)
-    nfs_proto = 'udp'
+    nfs_use_udp = true
     nfs_vers = 3
 else
-    nfs_proto = 'tcp'
+    nfs_use_udp = false
     nfs_vers = 4
 end
 
+libvirt_host_ip = "#{ENV['LIBVIRT_HOST_IP']}"
+libvirt_host_cpus = ENV['LIBVIRT_HOST_CPUS']
+libvirt_host_memory = ENV['LIBVIRT_HOST_MEMORY']
+
 Vagrant.configure("2") do |config|
     config.vm.box = "generic/opensuse15"
-    config.vm.network "private_network", ip: "192.168.56.4"
-    config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: nfs_proto, nfs_version: nfs_vers
+    config.vm.network "private_network", ip: libvirt_host_ip
+    config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: nfs_use_udp, nfs_version: nfs_vers
     config.vm.hostname = "libvirthost"
     config.vm.provider "virtualbox" do |v|
         v.name = "libvirthost"
@@ -17,8 +21,8 @@ Vagrant.configure("2") do |config|
         v.customize ['modifyvm', :id, '--nested-hw-virt', 'on']
         v.customize ['modifyvm', :id, '--natdnshostresolver1', 'on']
         v.customize ["modifyvm", :id, "--chipset", "ich9"]
-        v.memory = 8192
-        v.cpus = 4
+        v.memory = libvirt_host_memory
+        v.cpus = libvirt_host_cpus
     end
     config.vm.provision "shell", path: "configure.sh"
 end

@@ -59,9 +59,7 @@ BRANCH="${1:-main}"
 function purge_old_assets() {
     echo "Destroying related VM and previous artifacts..."
     cd $SCRIPT_DIR/k8s_ncn
-    vagrant destroy -f || true
-    cd $OLDPWD
-    cd $SCRIPT_DIR/libvirt_host
+    [[ $(vagrant status --machine-readable | grep "state,running") ]] && vagrant destroy -f
     cd $OLDPWD
     rm -rf $STAGE_DIR
     rm -rf $BOOT_DIR
