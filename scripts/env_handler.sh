@@ -39,13 +39,13 @@ if [[ -z "${VAGRANT_NCN_USER}" || -z "${VAGRANT_NCN_PASSWORD}" ]]; then
 
     echo -n "What should the username be for your local environment? "
     read -r NCN_VAGRANT_USER
-    $SED_COMMAND "s/VAGRANT_NCN_USER=/VAGRANT_NCN_USER=${NCN_VAGRANT_USER}/g" $ENV_FILE
+    $SED_COMMAND "s/export VAGRANT_NCN_USER=/export VAGRANT_NCN_USER=${NCN_VAGRANT_USER}/g" $ENV_FILE
     unset -v NCN_VAGRANT_USER
     echo "-"
 
     echo -n "What should the password be for your local environment? "
     stty -echo; read -r NCN_VAGRANT_PASS; stty echo;
-    $SED_COMMAND "s/VAGRANT_NCN_PASSWORD=/VAGRANT_NCN_PASSWORD=\"${NCN_VAGRANT_PASS}\"/g" $ENV_FILE
+    $SED_COMMAND "s/export VAGRANT_NCN_PASSWORD=/export VAGRANT_NCN_PASSWORD=\"${NCN_VAGRANT_PASS}\"/g" $ENV_FILE
     unset -v NCN_VAGRANT_PASS
     echo "-"
 fi
