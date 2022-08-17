@@ -111,7 +111,7 @@ Vagrant.configure("2") do |config|
         ncn.cpus = k8s_ncn_cpus
         ncn.memory = k8s_ncn_memory
 
-        # Enable KVM nested virtualization.
+        # Enables KVM nested virtualization.
         ncn.nested = true
         ncn.cpu_mode = "host-passthrough"
 
