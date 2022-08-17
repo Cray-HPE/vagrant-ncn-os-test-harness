@@ -21,7 +21,7 @@ function wait_then_vnc() {
         vnc_app=/Applications/VNC\ Viewer.app/Contents/MacOS/vncviewer
     
     # Async run vncviewer guessing the wait_for for the vm to be booted.
-    [[ !-z $vnc_app ]] && nohup sleep $wait_for && $vnc_app $LIBVIRT_HOST_IP &
+    [[ ! -z $vnc_app ]] && nohup sleep $wait_for && $vnc_app $LIBVIRT_HOST_IP &
 }
 wait_then_vnc
 
