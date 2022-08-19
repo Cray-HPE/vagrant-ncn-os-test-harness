@@ -46,14 +46,12 @@ function exit_w_message() {
     exit 1
 }
 
-# Branch name input validation.
-BRANCH="${1:-main}"
-[[ $(echo $BRANCH | grep -E '^--') ]] && BRANCH=main
-[[ $BRANCH == "1.0" || $BRANCH == "1.2" || $BRANCH == "1.3" || $BRANCH == "1.4" || $BRANCH == "main" ]] || \
-    exit_w_message "Please enter a valid CSM branch version: 1.0, 1.2, 1.3, 1.4, or main."
-[[ $BRANCH == "1.3" ]] && BRANCH="main" # The version our main branch tracks.
-[[ $BRANCH != "main" ]] && BRANCH="release/${BRANCH}" # Converts it to a release branch.
-
+# CSM_TAG name input validation.
+CSM_TAG="${1:-v1.3.0-RC.1}"
+[[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG='v1.3.0-RC.1'
+CSM_ASSETS_URL="https://raw.githubusercontent.com/Cray-HPE/csm/$CSM_TAG/assets.sh"
+[[ $(curl -LI ${CSM_ASSETS_URL} -o /dev/null -w '%{http_code}\n' -s) == "200" ]] || \
+    exit_w_message "Please provide a valid CSM tag as the first argument. Refer to https://github.com/Cray-HPE/csm/tags"
 
 
 function purge_old_assets() {
@@ -90,8 +88,8 @@ display_disk_capacity
 
 # Determine correct version of image and begin downloading.
 if [[ $FROM_EXISTING == 0 ]]; then
-    echo "Referencing image for the head of branch $BRANCH."
-    source /dev/stdin < <(curl -fsSL https://raw.githubusercontent.com/Cray-HPE/csm/$BRANCH/assets.sh | grep -E -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
+    echo "Referencing image at CSM tag $CSM_TAG: $CSM_ASSETS_URL"
+    source /dev/stdin < <(curl -fsSL $CSM_ASSETS_URL | grep -E -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
     QCOW2_URL=$(echo ${KUBERNETES_ASSETS[0]} | sed 's/squashfs/qcow2/g')
 
     smart_download $STAGE_DIR/$IMAGE_NAME $QCOW2_URL
@@ -118,7 +116,7 @@ end
 EOF
 cat <<-EOF > $STAGE_DIR/metadata.json
 {
-    "name": "csm/k8s_ncn_${BRANCH}",
+    "name": "csm/k8s_ncn_${CSM_TAG}",
     "description": "This box contains a libvirt qcow2 image for testing the CSM K8s NCN image.",
     "provider": "libvirt",
     "format": "qcow2",
@@ -130,12 +128,13 @@ EOF
 # Modify image so it boots in Vagrant correctly.
 echo "Removing CSM dracut scripts from image..."
 cd $SCRIPT_DIR/libvirt_host
+# TODO: Make the idempotency actually check state instead of "|| true".
 vagrant ssh -- -t <<-EOS
-    sudo virt-customize \
+    LIBGUESTFS_DEBUG=1 sudo virt-customize \
         -a /vagrant/images/box.img \
         --root-password password:${VAGRANT_NCN_PASSWORD} \
-        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash' \
-        --run-command 'user add -m vagrant' \
+        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true' \
+        --run-command 'useradd -m vagrant || true' \
         --password vagrant:password:vagrant
 EOS
 cd $OLDPWD

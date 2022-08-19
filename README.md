@@ -47,10 +47,12 @@ All are performed from the k8s_ncn directory:
 ### Downloading the latest NCN image
 
 - Simply run ./update_box.sh from the repo root directory to fetch the lates image. WARNING: This will destroy your existing k8s_ncn VM.
+- You can specify the specific CSM tagged version by passing it in to ./update_box.sh as the first argument. Defaults to v1.3.0-RC.1.
+  - Refer to [CSM Tags on Github](https://github.com/Cray-HPE/csm/tags) for the list of available tags.
 
 ## TODO
 
-1. Fix the libvirthost lock up when provisioning a libvirt host. I suspect this is a result of changing the default pool to /vagrant/images.
-1. Fix Vagrant detection that k8s worker booted.
+1. Address the myriad of TODO comments in this codebase.
+1. Fix vagrant ssh to k8s_ncn.
 1. Add cloud-init provisioning user data to spin up a single node worker.
 1. Add helper scripts for checking product stream repos and running them via `vagrant provision`.
