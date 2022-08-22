@@ -49,6 +49,8 @@ function exit_w_message() {
 # CSM_TAG name input validation.
 CSM_TAG="${1:-v1.3.0-RC.1}"
 [[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG='v1.3.0-RC.1'
+RELEASE_BRANCH=$(echo $CSM_TAG | sed -nE 's/[v,V]([0-9]\.[0-9]).*/\1/p')
+[[ $(echo $RELEASE_BRANCH) == "1.4" ]] && RELEASE_BRANCH=main
 CSM_ASSETS_URL="https://raw.githubusercontent.com/Cray-HPE/csm/$CSM_TAG/assets.sh"
 [[ $(curl -LI ${CSM_ASSETS_URL} -o /dev/null -w '%{http_code}\n' -s) == "200" ]] || \
     exit_w_message "Please provide a valid CSM tag as the first argument. Refer to https://github.com/Cray-HPE/csm/tags"
@@ -76,6 +78,21 @@ function smart_download() {
         sleep 1
     done
 }
+
+function fetch_zypper_repos() {
+    mkdir -p $STAGE_DIR/repos
+    REPO_MANIFESTS=(
+        conntrack.spec
+        cray.repos
+        google.template.repos
+        hpe.template.repos
+        suse.template.repos
+    )
+    for REPO_MANIFEST in ${REPO_MANIFESTS[*]}; do
+        smart_download $STAGE_DIR/repos/$REPO_MANIFEST "https://raw.githubusercontent.com/Cray-HPE/csm-rpms/${RELEASE_BRANCH}/repos/${REPO_MANIFEST}"
+    done
+}
+fetch_zypper_repos
 
 # Start Libvirthost if not started so we can use virt-customize to modify the image.
 $SCRIPT_DIR/libvirt_host/start.sh
@@ -132,14 +149,16 @@ cd $SCRIPT_DIR/libvirt_host
 vagrant ssh -- -t <<-EOS
     LIBGUESTFS_DEBUG=1 sudo virt-customize \
         -a /vagrant/images/box.img \
+        --append-line /etc/fstab:"192.168.122.1:/vagrant/guest_mount /vagrant nfs rw,intr,nfsvers=4,proto=tcp 0 0" \
         --root-password password:${VAGRANT_NCN_PASSWORD} \
-        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true'
+        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true' \
+        --run-command 'mv /etc/cloud/cloud.cfg.d /etc/cloud/cloud.cfg.d.bak && mkdir -p /etc/cloud/cloud.cfg.d'
 EOS
 cd $OLDPWD
 
 # Create the vagrant box.
-echo "Creating a tarball of Vagrant assets. This may take a 5-10 minutes without console feedback."
+echo "Creating a tarball of Vagrant assets. This may take a 3-5 minutes without console feedback."
 cd $STAGE_DIR
-tar cvzf ${BOX_NAME}.box metadata.json Vagrantfile $IMAGE_NAME
+tar cvf ${BOX_NAME}.box metadata.json Vagrantfile $IMAGE_NAME
 cd $OLDPWD
 vagrant box add --name ${BOX_NAME} $STAGE_DIR/${BOX_NAME}.box --force
