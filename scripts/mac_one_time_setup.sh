@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 brew install vagrant virtualbox vnc-viewer ngrok
+
+#TODO: symlink eula to remove error message.
 ln -s /Applications/VNC\ Viewer.app/Contents/MacOS/vncviewer /usr/local/bin/vncviewer
 vagrant plugin install vagrant-libvirt vagrant-env
 # Download patch fix for setting up NFS folders on mac.
