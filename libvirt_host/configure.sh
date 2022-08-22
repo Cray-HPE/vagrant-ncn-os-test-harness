@@ -53,3 +53,5 @@ enable_and_start vboxadd-service
 enable_and_start kexec-load
 # TODO: set crashkernel kernel param for kdump
 #enable_and_start kdump
+
+echo "SUCCESS: libvirt_host was successfully provisioned."
