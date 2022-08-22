@@ -74,9 +74,9 @@ ntp:
   - ncn-m001
   - ntp.hpecorp.net
 runcmd:
-- /srv/cray/scripts/metal/net-init.sh
+{# - /srv/cray/scripts/metal/net-init.sh #}
 - /srv/cray/scripts/common/update_ca_certs.py
-- /srv/cray/scripts/metal/install.sh
+{# - /srv/cray/scripts/metal/install.sh #}
 - /srv/cray/scripts/common/kubernetes-cloudinit.sh
 - /srv/cray/scripts/join-spire-on-storage.sh
 - touch /etc/cloud/cloud-init.disabled
