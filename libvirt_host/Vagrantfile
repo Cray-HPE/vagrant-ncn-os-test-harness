@@ -1,3 +1,11 @@
+REQUIRED_PLUGINS = %w(vagrant-env)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+  Vagrant.has_plugin?(plugin) || (
+    puts "The #{plugin} plugin is required. Please install it with:"
+    puts "$ vagrant plugin install #{plugin}"
+    false
+  )
+end
 if RbConfig::CONFIG['host_os'].match?(/^darwin/)
     nfs_use_udp = true
     nfs_vers = 3
@@ -6,13 +14,12 @@ else
     nfs_vers = 4
 end
 
-libvirt_host_ip = "#{ENV['LIBVIRT_HOST_IP']}"
-libvirt_host_cpus = ENV['LIBVIRT_HOST_CPUS']
-libvirt_host_memory = ENV['LIBVIRT_HOST_MEMORY']
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
 
 Vagrant.configure("2") do |config|
     config.vm.box = "opensuse/Leap-15.4.x86_64"
-    config.vm.network "private_network", ip: libvirt_host_ip
+    config.env.enable
+    config.vm.network "private_network", ip: ENV['LIBVIRT_HOST_IP']
     config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: nfs_use_udp, nfs_version: nfs_vers
     config.vm.hostname = "libvirthost"
     config.vm.provider "virtualbox" do |v|
@@ -26,8 +33,8 @@ Vagrant.configure("2") do |config|
         v.customize ['modifyvm', :id, '--largepages', 'on']
         v.customize ['modifyvm', :id, '--natdnshostresolver1', 'on']
         v.customize ["modifyvm", :id, "--chipset", "ich9"]
-        v.memory = libvirt_host_memory
-        v.cpus = libvirt_host_cpus
+        v.memory = ENV['LIBVIRT_HOST_MEMORY']
+        v.cpus = ENV['LIBVIRT_HOST_CPUS']
     end
     config.vm.provision "shell", path: "configure.sh"
 end

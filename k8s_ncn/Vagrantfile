@@ -1,4 +1,4 @@
-REQUIRED_PLUGINS = %w(vagrant-libvirt)
+REQUIRED_PLUGINS = %w(vagrant-libvirt vagrant-env)
 exit unless REQUIRED_PLUGINS.all? do |plugin|
   Vagrant.has_plugin?(plugin) || (
     puts "The #{plugin} plugin is required. Please install it with:"
@@ -6,14 +6,7 @@ exit unless REQUIRED_PLUGINS.all? do |plugin|
     false
   )
 end
-
-KEYFILE = File.join(__dir__, '..', 'libvirt_host', '.vagrant', 'machines', 'default', 'virtualbox', 'private_key')
-
-# Optionally, set this to a remote lab machine running libvirt.
-REMOTE_HOST = ENV['LIBVIRT_HOST_IP']
-
-k8s_ncn_cpus = ENV['K8s_NCN_CPUS']
-k8s_ncn_memory = ENV['K8s_NCN_MEMORY']
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
 
 # Boot params collected from ncn-w001:/metal/recovery/boot/grub2/grub.cfg
 # Unused boot params collected here for reference only.
@@ -78,10 +71,11 @@ BOOT_PARAMS = %w(
   metal.no-wipe=1
   metal.disks=1
   root=/dev/vda2
-  ds=nocloud-net\;s=http://192.168.122.1/\;h=ncn-m001
+  ds=nocloud-net;s=http://192.168.122.1/;h=ncn-m001
 )
 
 Vagrant.configure("2") do |config|
+    config.env.enable
     config.ssh.username = ENV['VAGRANT_NCN_USER']
     config.ssh.password = ENV['VAGRANT_NCN_PASSWORD']
     config.vm.synced_folder ".", "/vagrant", disabled: true
@@ -89,6 +83,7 @@ Vagrant.configure("2") do |config|
     # config.vm.box = "ncn_common"
     config.vm.box = "k8s_ncn"
     config.vm.boot_timeout = 600
+    config.vm.network "private_network", ip: "192.168.122.2"
     config.vm.provider :libvirt do |ncn|
         ncn.default_prefix = "csm-"
 
@@ -108,10 +103,10 @@ Vagrant.configure("2") do |config|
         ncn.cmd_line = BOOT_PARAMS.join(' ')
 
         # TODO: Make something a little smarter here for CPU core request.
-        ncn.cpus = k8s_ncn_cpus
-        ncn.memory = k8s_ncn_memory
+        ncn.cpus = ENV['K8s_NCN_CPUS']
+        ncn.memory = ENV['K8s_NCN_MEMORY']
 
-        # Enables KVM nested virtualization.
+        # Enable KVM nested virtualization.
         ncn.nested = true
         ncn.cpu_mode = "host-passthrough"
 
@@ -119,12 +114,13 @@ Vagrant.configure("2") do |config|
         ncn.machine_type = 'q35'
 
         # Tells Vagrant to orchestrate provisioning against the libvirt_host.
-        ncn.uri = "qemu+ssh://root@#{REMOTE_HOST}/session?keyfile=#{KEYFILE}"
-        ncn.system_uri = "qemu+ssh://root@#{REMOTE_HOST}/system?keyfile=#{KEYFILE}"
+        KEYFILE = File.join(__dir__, '..', 'libvirt_host', '.vagrant', 'machines', 'default', 'virtualbox', 'private_key')
+        ncn.uri = "qemu+ssh://root@#{ENV['LIBVIRT_HOST_IP']}/session?keyfile=#{KEYFILE}"
+        ncn.system_uri = "qemu+ssh://root@#{ENV['LIBVIRT_HOST_IP']}/system?keyfile=#{KEYFILE}"
     end
 
     # TODO: Move this to the fstab so it can survive a reboot.
-    config.vm.provision "shell", inline: 'mount -t nfs -o rw 192.168.122.1:/vagrant /vagrant'
+    config.vm.provision "shell", inline: 'mkdir -p /vagrant && mount -t nfs -o rw,vers=4 192.168.122.1:/vagrant/guest_mount /vagrant'
 
     # TODO: Enable ansible testing procedure.
     # config.vm.provision "ansible_local" do |ansible|

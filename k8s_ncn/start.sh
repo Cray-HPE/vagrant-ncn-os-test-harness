@@ -15,12 +15,8 @@ function wait_then_vnc() {
     # TODO: Make wait_for a bigger value if the box needs to be uploaded to the libvirt_host
     wait_for=${1:-5}
 
-    # vncviewer on Linux comes from tigervnc. Feel free to add options here.
+    # vncviewer on Linux comes from tigervnc. On mac, vncviewer. Feel free to add options here.
     [[ $(which vncviewer) ]] && vnc_app=$(which vncviewer)
-
-    # brew install vncviewer if on Mac OS.
-    [[ $(uname) == "Darwin" && -d /Applications/VNC\ Viewer.app ]] && \
-        vnc_app='"/Applications/VNC Viewer.app/Contents/MacOS/vncviewer"'
     
     # Async run vncviewer guessing the wait_for for the vm to be booted.
     [[ ! -z $vnc_app ]] && nohup sleep $wait_for && $vnc_app $LIBVIRT_HOST_IP &

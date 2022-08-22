@@ -133,9 +133,7 @@ vagrant ssh -- -t <<-EOS
     LIBGUESTFS_DEBUG=1 sudo virt-customize \
         -a /vagrant/images/box.img \
         --root-password password:${VAGRANT_NCN_PASSWORD} \
-        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true' \
-        --run-command 'useradd -m vagrant || true' \
-        --password vagrant:password:vagrant
+        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true'
 EOS
 cd $OLDPWD
 
