@@ -24,3 +24,4 @@ function wait_then_vnc() {
 wait_then_vnc
 
 vagrant up --provider=libvirt
+[[ $(vagrant snapshot list | grep base) ]] || vagrant snapshot save base

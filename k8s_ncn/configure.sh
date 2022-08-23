@@ -1,13 +1,41 @@
 #!/usr/bin/env bash
-set -e
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source $SCRIPT_DIR/../scripts/env_handler.sh
+SCRIPT_DIR=/vagrant
+source /etc/environment
+source /etc/cray/vagrant_image.bom
 
-# Populate Artifactory creds so zypper repos work.
-cat <<-EOF > /etc/environment
-ARTIFACTORY_USER=${ARTIFACTORY_USER}
-ARTIFACTORY_TOKEN=${ARTIFACTORY_TOKEN}
-EOF
+function download_file() {
+    PATH_LOCAL_FILE=$1
+    DOWNLOAD_URL=$2
+    echo "Downloading file from $DOWNLOAD_URL"
+    curl -L -u $PATH_LOCAL_FILE $DOWNLOAD_URL
+}
 
-zypper -n refresh
+function fetch_zypper_repos() {
+    mkdir -p $SCRIPT_DIR/repos
+    REPO_MANIFESTS=(
+        conntrack.spec
+        cray.repos
+        google.template.repos
+        hpe.template.repos
+        suse.template.repos
+    )
+    for REPO_MANIFEST in ${REPO_MANIFESTS[*]}; do
+        download_file $SCRIPT_DIR/repos/$REPO_MANIFEST "https://raw.githubusercontent.com/Cray-HPE/csm-rpms/${RELEASE_BRANCH}/repos/${REPO_MANIFEST}"
+    done
+    # Also fetch the script used to populate them.
+    download_file $SCRIPT_DIR/repos/rpm-functions.sh "https://raw.githubusercontent.com/Cray-HPE/csm-rpms/${RELEASE_BRANCH}/scripts/rpm-functions.sh"
+    chmod +x $SCRIPT_DIR/repos/rpm-functions.sh
+}
+fetch_zypper_repos
+
+cd /vagrant/repos
+source ./rpm-functions.sh
+add-cray-repos
+add-google-repos
+add-hpe-repos
+add-suse-repos
+add-fake-conntrack
+zypper lr -e /tmp/repos.repos
+cat /tmp/repos.repos
+cd $OLDPWD

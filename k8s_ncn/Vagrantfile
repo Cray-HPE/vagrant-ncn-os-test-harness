@@ -108,7 +108,7 @@ Vagrant.configure("2") do |config|
 
         # Enable KVM nested virtualization.
         ncn.nested = true
-        ncn.cpu_mode = "host-passthrough"
+        # ncn.cpu_mode = "host-passthrough"
 
         # Maximizes compatibility for Intel-based machines.
         ncn.machine_type = 'q35'
@@ -119,6 +119,15 @@ Vagrant.configure("2") do |config|
         ncn.system_uri = "qemu+ssh://root@#{ENV['LIBVIRT_HOST_IP']}/system?keyfile=#{KEYFILE}"
     end
 
+    # Populate artifactory creds so zypper can reach algol.
+    config.vm.provision "shell", inline: <<-EOS
+if [[ ! $(cat /etc/environment | grep "ARTIFACTORY_USER" ) || ! $(cat /etc/environment | grep "ARTIFACTORY_TOKEN") ]]; then
+  cat <<-EOF > /etc/environment
+ARTIFACTORY_USER=#{ENV['ARTIFACTORY_USER']}
+ARTIFACTORY_TOKEN=#{ENV['ARTIFACTORY_TOKEN']}
+EOF
+fi
+EOS
     config.vm.provision "shell", path: "configure.sh"
 
 end
