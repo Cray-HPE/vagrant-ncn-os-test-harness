@@ -15,9 +15,7 @@ function help() {
     and associated volume so that your next boot uses the new image.
 
     Requirements:
-    - The libvirt_host VM must be up in order to perform the necessary modifications to the image. It will
-      be automatically started if not.
-      ----- The libvirt_host is $(vagrant status | grep virtualbox | grep -v "\n" | sed -e 's/^default                   //')
+    - This script expects to be run from within the libvirthost vm.
     - $(display_disk_capacity)
 
     Four environment variables are expected for credentialing. These will be asked for if not found in your .env.
@@ -36,6 +34,7 @@ EOH
 [[ $1 == '--help' || $2 == '--help' ]] && help && exit 0;
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+cd $SCRIPT_DIR
 STAGE_DIR=$SCRIPT_DIR/images
 BOOT_DIR=$SCRIPT_DIR/boot
 IMAGE_NAME=box.img
@@ -46,6 +45,9 @@ function exit_w_message() {
     echo $1
     exit 1
 }
+
+[[ ! $(hostname) == "libvirthost" ]] && \
+    exit_w_message "ERROR: This script must be run from within the libvirthost VM. Please run ./start.sh first at the root of this repo."
 
 # CSM_TAG name input validation.
 CSM_TAG="${1:-v1.3.0-RC.1}"
@@ -79,10 +81,8 @@ function smart_download() {
         echo "Resuming download..."
         sleep 1
     done
+    # TODO: Fetch and compare the sha to confirm file integrity.
 }
-
-# Start Libvirthost if not started so we can use virt-customize to modify the image.
-$SCRIPT_DIR/start.sh
 
 # Prepare asset directories
 [[ $FROM_EXISTING == 1 ]] || purge_old_assets
@@ -91,11 +91,10 @@ mkdir -p $BOOT_DIR
 display_disk_capacity
 
 # Determine correct version of image and begin downloading.
-if [[ $FROM_EXISTING == 0 ]]; then
     echo "Referencing image at CSM tag $CSM_TAG: $CSM_ASSETS_URL"
     source /dev/stdin < <(curl -fsSL $CSM_ASSETS_URL | grep -E -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
     QCOW2_URL=$(echo ${KUBERNETES_ASSETS[0]} | sed 's/squashfs/qcow2/g')
-
+if [[ $FROM_EXISTING == 0 ]]; then
     smart_download $STAGE_DIR/$IMAGE_NAME $QCOW2_URL
     smart_download $BOOT_DIR/k8s_ncn.kernel ${KUBERNETES_ASSETS[1]}
     smart_download $BOOT_DIR/k8s_ncn_initrd.xz ${KUBERNETES_ASSETS[2]}
@@ -130,18 +129,26 @@ EOF
 # NOTE FOR ABOVE ^: virtual_size must be larger than the original size of 46, otherwise the partitions are destroyed.
 
 # Modify image so it boots in Vagrant correctly.
-echo "Removing CSM dracut scripts from image..."
-# TODO: Improve idempotency
-vagrant ssh -- -t <<-EOS
-    LIBGUESTFS_DEBUG=1 sudo virt-customize \
-        -a /vagrant/images/box.img \
-        --append-line /etc/fstab:"192.168.122.1:/vagrant/guest_mount /vagrant nfs rw,intr,nfsvers=4,proto=tcp 0 0" \
-        --root-password password:${VAGRANT_NCN_PASSWORD} \
-        --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true' \
-        --run-command 'mv /etc/cloud/cloud.cfg.d /etc/cloud/cloud.cfg.d.bak && mkdir -p /etc/cloud/cloud.cfg.d' \
-        --write /etc/cray/vagrant_image.bom:"CSM_TAG=${CSM_TAG}\nQCOW2_SOURCE=${QCOW2_URL}\nINITRD_SOURCE=${KUBERNETES_ASSETS[2]}\nKERNEL_SOURCE=${KUBERNETES_ASSETS[1]}\nRELEASE_BRANCH=${RELEASE_BRANCH}" \
-        --run-command 'echo -e "$(cat /etc/cray/vagrant_image.bom)" > /etc/cray/vagrant_image.bom'
-EOS
+ZYPPER_CACHE=/var/cache/zypp/packages
+echo "Preparing image for libvirt boot..."
+[[ $(zypper repos repo-sle-update-sp3) ]] || \
+    zypper -n ar http://download.opensuse.org/update/leap/15.3/sle/ repo-sle-update-sp3
+[[ -f $(find $ZYPPER_CACHE -name qemu-guest-agent*) ]] || \
+    zypper -n install -d --from repo-sle-update-sp3 --oldpackage qemu-guest-agent-5.2.0-150300.115.2.x86_64
+
+LIBGUESTFS_DEBUG=1 sudo virt-customize \
+    -a /vagrant/images/box.img --network \
+    --append-line /etc/fstab:"192.168.122.1:/vagrant/guest_mount /vagrant nfs rw,intr,nfsvers=4,proto=tcp 0 0" \
+    --copy-in $(find $ZYPPER_CACHE -name liburing*):/tmp/ \
+    --copy-in $(find $ZYPPER_CACHE -name qemu-guest-agent*):/tmp/ \
+    --root-password password:${VAGRANT_NCN_PASSWORD} \
+    --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true' \
+    --run-command 'for PACKAGE in $(ls /tmp/*.rpm); do [[ $(rpm -qi $PACKAGE) ]] || rpm -i $PACKAGE; done' \
+    --run-command 'rm /tmp/*.rpm' \
+    --run-command 'systemctl disable kubelet cray-heartbeat spire-agent' \
+    --run-command 'mv /etc/cloud/cloud.cfg.d /etc/cloud/cloud.cfg.d.bak && mkdir -p /etc/cloud/cloud.cfg.d' \
+    --write /etc/cray/vagrant_image.bom:"CSM_TAG=${CSM_TAG}\nQCOW2_SOURCE=${QCOW2_URL}\nINITRD_SOURCE=${KUBERNETES_ASSETS[2]}\nKERNEL_SOURCE=${KUBERNETES_ASSETS[1]}\nRELEASE_BRANCH=${RELEASE_BRANCH}" \
+    --run-command 'echo -e "$(cat /etc/cray/vagrant_image.bom)" > /etc/cray/vagrant_image.bom'
 
 # Create the vagrant box.
 echo "Creating a tarball of Vagrant assets. This may take a 1-2 minutes without console feedback."
