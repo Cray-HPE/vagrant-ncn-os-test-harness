@@ -15,8 +15,9 @@ function help() {
     and associated volume so that your next boot uses the new image.
 
     Requirements:
-    - The libvirt_host VM must be up in order to perform the necessary modifications to the image.
-      ----- The libvirt_host is $(cd ./libvirt_host && vagrant status | grep virtualbox | grep -v "\n" | sed -e 's/^default                   //')
+    - The libvirt_host VM must be up in order to perform the necessary modifications to the image. It will
+      be automatically started if not.
+      ----- The libvirt_host is $(vagrant status | grep virtualbox | grep -v "\n" | sed -e 's/^default                   //')
     - $(display_disk_capacity)
 
     Four environment variables are expected for credentialing. These will be asked for if not found in your .env.
@@ -35,8 +36,8 @@ EOH
 [[ $1 == '--help' || $2 == '--help' ]] && help && exit 0;
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-STAGE_DIR=$SCRIPT_DIR/libvirt_host/images
-BOOT_DIR=$SCRIPT_DIR/libvirt_host/boot
+STAGE_DIR=$SCRIPT_DIR/images
+BOOT_DIR=$SCRIPT_DIR/boot
 IMAGE_NAME=box.img
 BOX_NAME=k8s_ncn
 source $SCRIPT_DIR/scripts/env_handler.sh
@@ -81,7 +82,7 @@ function smart_download() {
 }
 
 # Start Libvirthost if not started so we can use virt-customize to modify the image.
-$SCRIPT_DIR/libvirt_host/start.sh
+$SCRIPT_DIR/start.sh
 
 # Prepare asset directories
 [[ $FROM_EXISTING == 1 ]] || purge_old_assets
@@ -130,7 +131,6 @@ EOF
 
 # Modify image so it boots in Vagrant correctly.
 echo "Removing CSM dracut scripts from image..."
-cd $SCRIPT_DIR/libvirt_host
 # TODO: Improve idempotency
 vagrant ssh -- -t <<-EOS
     LIBGUESTFS_DEBUG=1 sudo virt-customize \
@@ -142,7 +142,6 @@ vagrant ssh -- -t <<-EOS
         --write /etc/cray/vagrant_image.bom:"CSM_TAG=${CSM_TAG}\nQCOW2_SOURCE=${QCOW2_URL}\nINITRD_SOURCE=${KUBERNETES_ASSETS[2]}\nKERNEL_SOURCE=${KUBERNETES_ASSETS[1]}\nRELEASE_BRANCH=${RELEASE_BRANCH}" \
         --run-command 'echo -e "$(cat /etc/cray/vagrant_image.bom)" > /etc/cray/vagrant_image.bom'
 EOS
-cd $OLDPWD
 
 # Create the vagrant box.
 echo "Creating a tarball of Vagrant assets. This may take a 1-2 minutes without console feedback."

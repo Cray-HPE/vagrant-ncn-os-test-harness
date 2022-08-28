@@ -6,13 +6,6 @@ exit unless REQUIRED_PLUGINS.all? do |plugin|
     false
   )
 end
-if RbConfig::CONFIG['host_os'].match?(/^darwin/)
-    nfs_use_udp = true
-    nfs_vers = 3
-else
-    nfs_use_udp = false
-    nfs_vers = 4
-end
 
 ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
 
@@ -20,7 +13,10 @@ Vagrant.configure("2") do |config|
     config.vm.box = "opensuse/Leap-15.4.x86_64"
     config.env.enable
     config.vm.network "private_network", ip: ENV['LIBVIRT_HOST_IP']
-    config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: nfs_use_udp, nfs_version: nfs_vers
+    config.vm.synced_folder ".", "/vagrant",
+      type: "nfs",
+      nfs_udp: false,
+      nfs_version: 4
     config.vm.hostname = "libvirthost"
     config.vm.provider "virtualbox" do |v|
         v.name = "libvirthost"
@@ -36,5 +32,5 @@ Vagrant.configure("2") do |config|
         v.memory = ENV['LIBVIRT_HOST_MEMORY']
         v.cpus = ENV['LIBVIRT_HOST_CPUS']
     end
-    config.vm.provision "shell", path: "configure.sh"
+    config.vm.provision "shell", path: "scripts/configure.sh"
 end

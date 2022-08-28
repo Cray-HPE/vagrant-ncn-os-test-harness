@@ -3,5 +3,5 @@ images/
 boot/
 nohup.out
 *.box
-libvirt_host/guest_mount/*
+guest_mount/*
 .env
