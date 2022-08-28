@@ -8,4 +8,4 @@ cd $SCRIPT_DIR
 vagrant destroy -f || true
 
 vagrant up --provider=libvirt
-# [[ $(vagrant snapshot list | grep base) ]] || vagrant snapshot save base
+$SCRIPT_DIR/scripts/take_snapshot.sh base
