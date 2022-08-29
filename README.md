@@ -16,7 +16,7 @@ Any of the scripts below may guide you through an interactive script to populate
     - Takes about 10 minutes.
 1. Run `vagrant ssh` to shell into libvirt_host. Then run `cd /vagrant && sudo su`.
 1. Run `./update_box.sh` to produce a Vagrant box. You can optionally specify a CSM tag as the first argument. For a list of tags, refer to <https://github.com/Cray-HPE/csm/tags>.
-    - Takes about 20-30 minutes and requires 40GB of free disk space.
+    - Takes about 30 minutes and requires 40GB of free disk space.
     - You will want to do periodically to ensure you are testing with something current for the CSM release.
 1. Make sure you are on the VPN and run `cd k8s_ncn && ./start.sh`.
 1. As the machine is booting, you can observe console output by attaching a vnc client at 192.168.56.4.
@@ -60,3 +60,5 @@ All are performed from the k8s_ncn directory:
 1. Address the myriad of TODO comments in this codebase.
 1. Add cloud-init provisioning user data to spin up a single node worker.
 1. Add helper scripts for checking product stream repos and running them via `vagrant provision`.
+1. Speed up the update box script by making it not execute against an NFS mount.
+1. Deliver built boxes to Artifactory.
