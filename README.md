@@ -12,19 +12,17 @@ You must have an account at artifactory.algol60.net to use it. Contact CSM DevOp
 Any of the scripts below may guide you through an interactive script to populate your .env credentials if not already done.
 
 1. One-time: If running Mac, `./mac_one_time_setup.sh` to make sure dependencies are met.
-1. One-time: Run `cd libvirt_host && ./start.sh` to spin up the Libvirt host.
+1. One-time: Run `./start.sh` to spin up the Libvirt host.
     - Takes about 10 minutes.
 1. Run `vagrant ssh` to shell into libvirt_host. Then run `cd /vagrant && sudo su`.
-1. Run `./update_box.sh` to produce a Vagrant box. You can optionally specify a CSM release as the first argument, e.g. '1.2'.
-    - Takes about 10-15 minutes and requires 40GB of free disk space.
+1. Run `./update_box.sh` to produce a Vagrant box. You can optionally specify a CSM tag as the first argument. For a list of tags, refer to <https://github.com/Cray-HPE/csm/tags>.
+    - Takes about 20-30 minutes and requires 40GB of free disk space.
     - You will want to do periodically to ensure you are testing with something current for the CSM release.
 1. Make sure you are on the VPN and run `cd k8s_ncn && ./start.sh`.
 1. As the machine is booting, you can observe console output by attaching a vnc client at 192.168.56.4.
 1. Run `vagrant ssh` to shell into the k8s_ncn VM and `cd /vagrant` to get to the guest_mount from the host.
 
-From here, you can checkout any other repos on your host into [repo_root]/guest_mount and test them inside
-of the k8s_ncn. You can revert to snapshots of either the libvirt_host or the k8s_ncn to save time in test
-iterations.
+From here, you can checkout any other repos on your host into [repo_root]/guest_mount and test them inside of the k8s_ncn. You can revert to snapshots of either the libvirt_host or the k8s_ncn to save time in test iterations.
 
 ## Operations
 

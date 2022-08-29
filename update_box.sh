@@ -151,7 +151,7 @@ LIBGUESTFS_DEBUG=1 sudo virt-customize \
     --run-command 'echo -e "$(cat /etc/cray/vagrant_image.bom)" > /etc/cray/vagrant_image.bom'
 
 # Create the vagrant box.
-echo "Creating a tarball of Vagrant assets. This may take a 1-2 minutes without console feedback."
+echo "Creating a tarball of Vagrant assets. This may take a 5-10 minutes without console feedback."
 cd $STAGE_DIR
 tar cvf ${BOX_NAME}.box metadata.json Vagrantfile $IMAGE_NAME
 cd $OLDPWD

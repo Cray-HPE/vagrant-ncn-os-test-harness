@@ -8,7 +8,6 @@ function enable_and_start() {
 }
 
 zypper -n refresh
-# TODO: Pin these versions
 zypper -n install -t pattern \
     kvm_tools=20180302-lp154.1.2 \
     kvm_server=20180302-lp154.1.2
@@ -63,5 +62,12 @@ enable_and_start vboxadd-service
 enable_and_start kexec-load
 # TODO: set crashkernel kernel param for kdump
 #enable_and_start kdump
+
+# Add sp3 repo for access to artifacts for k8s_ncn.
+[[ $(zypper repos | grep repo-sle-update-sp3) ]] || \
+    zypper -n ar http://download.opensuse.org/update/leap/15.3/sle/ repo-sle-update-sp3
+zypper refresh repo-sle-update-sp3
+
+# TODO: Add fstab entry for nfs mount to persist after a non-Vagrant restart.
 
 echo "SUCCESS: libvirt_host was successfully provisioned."
