@@ -61,7 +61,7 @@ BOOT_PARAMS = %w(
   rd.peerdns=0
   rd.multipath=0
   rd.bootif=0
-  hostname=ncn-w001
+  hostname=ncn-m001
   append nosplash
   crashkernel=360M
   log_buf_len=1
