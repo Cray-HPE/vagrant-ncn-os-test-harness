@@ -131,7 +131,7 @@ EOF
 # Modify image so it boots in Vagrant correctly.
 ZYPPER_CACHE=/var/cache/zypp/packages
 echo "Preparing image for libvirt boot..."
-[[ $(zypper repos repo-sle-update-sp3) ]] || \
+[[ $(zypper repos | grep repo-sle-update-sp3) ]] || \
     zypper -n ar http://download.opensuse.org/update/leap/15.3/sle/ repo-sle-update-sp3
 [[ -f $(find $ZYPPER_CACHE -name qemu-guest-agent*) ]] || \
     zypper -n install -d --from repo-sle-update-sp3 --oldpackage qemu-guest-agent-5.2.0-150300.115.2.x86_64
