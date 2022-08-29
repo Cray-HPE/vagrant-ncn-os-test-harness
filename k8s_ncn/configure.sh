@@ -26,6 +26,8 @@ function fetch_zypper_repos() {
     # Also fetch the script used to populate them.
     download_file $SCRIPT_DIR/repos/rpm-functions.sh "https://raw.githubusercontent.com/Cray-HPE/csm-rpms/${RELEASE_BRANCH}/scripts/rpm-functions.sh"
     chmod +x $SCRIPT_DIR/repos/rpm-functions.sh
+    # Silence the echo of credential.
+    sed -i 's/echo "Adding repo ${alias} at ${url}"/# echo "Adding repo ${alias} at ${url}"/g' $SCRIPT_DIR/repos/rpm-functions.sh
 }
 fetch_zypper_repos
 
