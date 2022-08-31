@@ -17,6 +17,7 @@ zypper -n install \
     libguestfs \
     gptfdisk e2fsprogs hostname
 vagrant plugin install vagrant-env
+zypper -n rr opensuse-oss
 
 enable_and_start libvirtd
 virt-host-validate
