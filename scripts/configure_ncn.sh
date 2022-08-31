@@ -6,7 +6,7 @@ function enable_and_start() {
     systemctl start $THIS_SERVICE
 }
 
-zypper -n ar https://download.opensuse.org/distribution/leap/15.3/repo/oss opensuse-oss
+zypper -n ar --no-gpgcheck https://download.opensuse.org/distribution/leap/15.3/repo/oss opensuse-oss
 zypper -n refresh
 zypper -n install -t pattern \
     kvm_tools \
@@ -39,7 +39,7 @@ function create_virt_pool() {
 }
 
 # TODO: Map the storage pool to the host NFS mount to bypass the need for a redundant box upload.
-create_virt_pool "default" "/home/vagrant/pool"
+create_virt_pool "default" "$(pwd)/pool"
 
 enable_and_start nfs-server
 

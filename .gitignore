@@ -1,6 +1,7 @@
 .vagrant/
 images/
 boot/
+pool/
 nohup.out
 *.box
 guest_mount/*
