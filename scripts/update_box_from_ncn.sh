@@ -33,7 +33,7 @@ EOH
 [[ $1  == '--from-existing' || $2 == '--from-existing' ]] && FROM_EXISTING=1 || FROM_EXISTING=0 # Skips downloading new artifacts.
 [[ $1 == '--help' || $2 == '--help' ]] && help && exit 0;
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/..
 cd $SCRIPT_DIR
 STAGE_DIR=$SCRIPT_DIR/images
 BOOT_DIR=$SCRIPT_DIR/k8s_ncn/boot
@@ -129,15 +129,14 @@ EOF
 # Modify image so it boots in Vagrant correctly.
 ZYPPER_CACHE=/var/cache/zypp/packages
 echo "Preparing image for libvirt boot..."
-[[ $(zypper repos | grep repo-sle-update-sp3) ]] || \
-    zypper -n ar http://download.opensuse.org/update/leap/15.3/sle/ repo-sle-update-sp3
-[[ -f $(find $ZYPPER_CACHE -name qemu-guest-agent*) ]] || \
-    zypper -n install -d --from repo-sle-update-sp3 --oldpackage qemu-guest-agent-5.2.0-150300.115.2.x86_64
-
+cd $STAGE_DIR
+[[ ! -f $STAGE_DIR/qemu-guest-agent-6.2.0-826.10.x86_64.rpm ]] && \
+    wget https://download.opensuse.org/repositories/Virtualization/15.3/x86_64/qemu-guest-agent-6.2.0-826.10.x86_64.rpm
+cd $OLDPWD
 LIBGUESTFS_DEBUG=1 sudo virt-customize \
     -a $STAGE_DIR/box.img --network \
     --append-line /etc/fstab:"192.168.122.1:/vagrant/guest_mount /vagrant nfs rw,intr,nfsvers=4,proto=tcp 0 0" \
-    --copy-in $(find $ZYPPER_CACHE -name qemu-guest-agent*):/tmp/ \
+    --copy-in $(find $STAGE_DIR -name qemu-guest-agent*):/tmp/ \
     --root-password password:${VAGRANT_NCN_PASSWORD} \
     --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true' \
     --run-command 'for PACKAGE in $(ls /tmp/*.rpm); do [[ $(rpm -qi $PACKAGE) ]] || rpm -i $PACKAGE; done' \
