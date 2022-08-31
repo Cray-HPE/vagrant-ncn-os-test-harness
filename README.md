@@ -9,6 +9,8 @@ You must have an account at artifactory.algol60.net to use it. Contact CSM DevOp
 
 ## Getting Started
 
+### Local Environment
+
 Any of the scripts below may guide you through an interactive script to populate your .env credentials if not already done.
 
 1. One-time: If running Mac, `./mac_one_time_setup.sh` to make sure dependencies are met.
@@ -23,6 +25,15 @@ Any of the scripts below may guide you through an interactive script to populate
 1. Run `vagrant ssh` to shell into the k8s_ncn VM and `cd /vagrant` to get to the guest_mount from the host.
 
 From here, you can checkout any other repos on your host into [repo_root]/guest_mount and test them inside of the k8s_ncn. You can revert to snapshots of either the libvirt_host or the k8s_ncn to save time in test iterations.
+
+### NCN Hosted
+
+These instructions apply if trying to standup the vagrant environment from an NCN host.
+
+1. One-time: Run `scripts/configure_ncn.sh` to install kvm and libvirt.
+2. As needed: Run `scripts/update_box_from_ncn.sh [CSM Tag]` to create the vagrant box.
+3. Run `cd k8s_ncn && VAGRANT_VAGRANTFILE=Vagrantfile.ncn vagrant up`
+4. Optional: If you want to see the console output during boot, you can create a ssh tunnel and vnc to the machine like so `ssh -N -T -l root -L5900:[name of NCN, e.g. ncn-w004]:5900 [m001 IP address]`. Then openyour VNC app of choice on your desktop and point it to localhost.
 
 ## Operations
 

@@ -1,0 +1,138 @@
+REQUIRED_PLUGINS = %w(vagrant-libvirt vagrant-env)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+  Vagrant.has_plugin?(plugin) || (
+    puts "The #{plugin} plugin is required. Please install it with:"
+    puts "$ vagrant plugin install #{plugin}"
+    false
+  )
+end
+ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+
+# Boot params collected from ncn-w001:/metal/recovery/boot/grub2/grub.cfg
+# Unused boot params collected here for reference only.
+UNUSED_BOOT_PARAMS = %w(
+  bond=bond0:mgmt0,mgmt1:mode=802.3ad,xmit_hash_policy=layer2+3,lacp_rate=slow
+  biosdevname=1
+  ifname=hsn0:ec:0d:9a:d9:c4:5a
+  ip=hsn0:auto6
+  ifname=lan1:b8:59:9f:f9:27:e3
+  ip=lan1:auto6
+  ifname=lan0:b8:59:9f:f9:27:e2
+  ip=lan0:auto6
+  ifname=mgmt0:a4:bf:01:38:e9:36
+  ip=mgmt0:auto6
+  ifname=mgmt1:a4:bf:01:38:e9:37
+  ip=mgmt1:auto6
+  pcie_ports=native
+  rootfallback=LABEL=BOOTRAID
+  initrd=initrd.img.xz
+  rd.live.squashimg=filesystem.squashfs
+  rd.live.overlay=LABEL=ROOTRAID
+  rd.live.overlay.thin=1
+  rd.live.overlay.overlayfs=1
+  rd.live.ram=0
+  rd.writable.fsimg=0
+  root=live:LABEL=SQFSRAID
+  transparent_hugepage=never
+  rd.md.waitclean=1
+  rd.md.conf=1
+  rd.net.timeout.carrier=120
+  rd.net.timeout.ifup=120
+  rd.net.timeout.iflink=120
+  rd.net.dhcp.retry=5
+  rd.net.timeout.ipv6auto=0
+  rd.net.timeout.ipv6dad=0
+)
+
+# The following boot params are used in provisioning.
+BOOT_PARAMS = %w(
+  iommu=pt
+  console=tty0 console=ttyS0,115200
+  rd.skipfsck
+  rd.luks=0
+  rd.luks.crypttab=0
+  rd.lvm.conf=0
+  rd.lvm=1
+  rd.auto=0
+  rd.md=0
+  rd.md.conf=0
+  rd.dm=0
+  rd.neednet=0
+  rd.peerdns=0
+  rd.multipath=0
+  rd.bootif=0
+  hostname=ncn-m001
+  append nosplash
+  crashkernel=360M
+  log_buf_len=1
+  rd.retry=10
+  rd.shell
+  xname=x3000c0s7b0n0
+  metal.no-wipe=1
+  metal.disks=1
+  root=/dev/vda2
+  ds=nocloud-net;s=http://192.168.122.1/;h=ncn-w012
+)
+
+Vagrant.configure("2") do |config|
+    config.env.enable
+    config.ssh.username = ENV['VAGRANT_NCN_USER']
+    config.ssh.password = ENV['VAGRANT_NCN_PASSWORD']
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+    config.vm.synced_folder "/var/lib/s3fs_cache", "/vagrant", type: "nfs", nfs_udp: false, nfs_version: 4
+    # config.vm.box = "generic/ubuntu2010"
+    # config.vm.box = "ncn_common"
+    config.vm.box = "k8s_ncn"
+    config.vm.boot_timeout = 600
+    config.vm.network "private_network", ip: "192.168.122.2"
+    config.vm.provider :libvirt do |ncn|
+        ncn.default_prefix = "csm-"
+        ncn.autostart = true
+
+        # Speeds up the boot a little by specifying exactly how to boot.
+        ncn.boot 'hd'
+        ncn.disk_device = "vda"
+        ncn.disk_bus = "virtio"
+
+        # Enables vnc console access at the LIBVIRT_HOST_IP.
+        ncn.graphics_type = "vnc"
+        ncn.graphics_ip = "0.0.0.0"
+        ncn.graphics_port = "5900"
+
+        # Referencing kernel and initrd in order to support passing boot params.
+        # ncn.kernel = File.join(__dir__, 'boot', 'k8s_ncn.kernel')
+        # ncn.initrd = File.join(__dir__, 'boot', 'k8s_ncn_initrd.xz')
+        # ncn.cmd_line = BOOT_PARAMS.join(' ')
+
+        # TODO: Make something a little smarter here for CPU core request.
+        ncn.cpus = ENV['K8s_NCN_CPUS']
+        ncn.memory = ENV['K8s_NCN_MEMORY']
+
+        # Enable KVM nested virtualization.
+        ncn.nested = true
+        # ncn.cpu_mode = "host-passthrough"
+
+        # Maximizes compatibility for Intel-based machines.
+        ncn.machine_type = 'q35'
+
+        # Helps libvirt detect that the machine got an IP.
+	ncn.management_network_mac = "525400123456"
+
+        # Tells Vagrant to orchestrate provisioning against a remote libvirt host.
+        # KEYFILE = File.join('/', 'root', '.ssh', 'private_key')
+        # ncn.uri = "qemu+ssh://root@#{ENV['LIBVIRT_HOST_IP']}/session?keyfile=#{KEYFILE}"
+        # ncn.system_uri = "qemu+ssh://root@#{ENV['LIBVIRT_HOST_IP']}/system?keyfile=#{KEYFILE}"
+    end
+
+    # Populate artifactory creds so zypper can reach algol.
+    config.vm.provision "shell", inline: <<-EOS
+if [[ ! $(cat /etc/environment | grep "ARTIFACTORY_USER" ) || ! $(cat /etc/environment | grep "ARTIFACTORY_TOKEN") ]]; then
+  cat <<-EOF > /etc/environment
+ARTIFACTORY_USER=#{ENV['ARTIFACTORY_USER']}
+ARTIFACTORY_TOKEN=#{ENV['ARTIFACTORY_TOKEN']}
+EOF
+fi
+EOS
+    config.vm.provision "shell", path: "configure.sh"
+
+end
