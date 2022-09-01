@@ -33,8 +33,8 @@ These instructions apply if trying to standup the vagrant environment from an NC
 1. Shell into an NCN worker, run `cd /var/lib/s3fs_cache && git clone https://github.com/Cray-HPE/vagrant_ncn_os_test_harness.git` Then cd into vagrant_ncn_os_test_harness.
 1. One-time: Run `scripts/configure_ncn.sh` to install kvm and libvirt.
 1. As needed: Run `scripts/update_box_from_ncn.sh [CSM Tag]` to create the vagrant box.
-1. Run `cd k8s_ncn && VAGRANT_VAGRANTFILE=Vagrantfile.ncn vagrant up`
-1. Optional: If you want to see the console output during boot, you can create a ssh tunnel and vnc to the machine like so `ssh -N -T -l root -L5900:[name of NCN, e.g. ncn-w004]:5900 [m001 IP address]`. Then openyour VNC app of choice on your desktop and point it to localhost.
+1. Run `cd k8s_ncn && scripts/start_on_ncn.sh`
+1. Optional: If you want to see the console output during boot, you can create a ssh tunnel and vnc to the machine. Run this on your desktop/laptop `ssh -N -T -l root -L5900:[name of NCN, e.g. ncn-w004]:5900 [m001 IP address]` and then open your VNC app of choice and point it to localhost.
 
 ## Operations
 
@@ -53,7 +53,6 @@ All are performed from the k8s_ncn directory:
 The following list represents ad-hoc procedures (not sequential steps) for common operations.
 All are performed from the k8s_ncn directory:
 
-- Run './start.sh' to provision a pristine VM.
 - Run 'vagrant snapshot save SNAPSHOT_NAME' to take snapshots of various states.
 - To view the console, vnc to 192.168.56.4:5900.
 - To ssh in run 'vagrant ssh'.

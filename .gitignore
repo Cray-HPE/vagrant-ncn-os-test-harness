@@ -2,6 +2,7 @@
 images/
 boot/
 pool/
+k8s_ncn/sandbox/
 nohup.out
 *.box
 guest_mount/*

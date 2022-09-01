@@ -133,6 +133,9 @@ ARTIFACTORY_TOKEN=#{ENV['ARTIFACTORY_TOKEN']}
 EOF
 fi
 EOS
-    config.vm.provision "shell", path: "configure.sh"
+    config.vm.provision "shell", inline: <<-EOS
+zypper -n ar /vagrant/sandbox/host.repos || true
+zypper -n refresh
+EOS
 
 end
