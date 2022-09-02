@@ -177,13 +177,13 @@ These instructions apply if trying to standup the vagrant environment from an NC
 1. ***One-time:*** Run the following to install KVM and `libvirt`
 
     ```bash
-    scripts/suse_setup_libvirt.sh
+    ./scripts/suse_setup_libvirt.sh
     ```
 
 1. ***As needed:*** Run this to create the vagrant box
 
     ```bash
-    scripts/update_box_from_ncn.sh [CSM Tag]
+    ./scripts/update_box_from_ncn.sh [CSM Tag]
     ```
 
 1. Then change into the staging area and start the box.
@@ -204,7 +204,7 @@ These instructions apply if trying to standup the vagrant environment from an NC
     ```
 
     ```bash
-    ssh -N -T -l root -L5900:$ncn_host:5900 $server`
+    ssh -N -T -l root -L5900:$ncn_host:5900 $server
     ```
 
 ## Operations
@@ -297,7 +297,7 @@ To download the latest artifacts manually, or by an IMAGE ID, use the following 
 - Set the image ID
 
     ```bash
-    IMAGE_ID=0.3.37
+    IMAGE_ID=0.3.47
     ```
 
 - Pre-install-toolkit
