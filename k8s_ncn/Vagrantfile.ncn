@@ -134,6 +134,15 @@ EOF
 fi
 EOS
     config.vm.provision "shell", inline: <<-EOS
+echo "Setting up CA certs and zypper repos."
+echo "Creating a temporary craysys just wrapping curl."
+mv /bin/craysys /bin/craysys.bak
+cat <<-EOF > /usr/local/bin/craysys
+#!/bin/bash
+curl -s api-gw-service.local:8888/meta-data?Global | jq '.Global["ca-certs"]'
+EOF
+chmod +x /usr/local/bin/craysys
+/srv/cray/scripts/common/update_ca_certs.py
 zypper -n ar /vagrant/sandbox/host.repos || true
 zypper -n refresh
 EOS
