@@ -32,7 +32,8 @@ export VAGRANT_VAGRANTFILE=$K8S_DIR/Vagrantfile.ncn
 
 mkdir -p $K8S_DIR/sandbox
 zypper repos -e $K8S_DIR/sandbox/host.repos
+[[ ! -f $k8S_dir/sandbox/admin.conf ]] && cp /etc/kubernetes/admin.conf $K8S_DIR/sandbox
 
-vagrant up --provider=libvirt --no-provision
+vagrant up --provider=libvirt --no-provision --no-destroy-on-error
 vagrant provision
 $K8S_DIR/scripts/take_snapshot.sh base

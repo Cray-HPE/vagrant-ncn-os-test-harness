@@ -24,6 +24,11 @@
 set -e
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+if [[ $(hostname | grep ncn-) ]];then
+  echo "This script is not meant to run on NCN hosts. Run $SCRIPT_DIR/scripts/start_on_ncn.sh instead."
+  exit 1
+fi
+
 source $SCRIPT_DIR/../scripts/env_handler.sh
 cd $SCRIPT_DIR
 
