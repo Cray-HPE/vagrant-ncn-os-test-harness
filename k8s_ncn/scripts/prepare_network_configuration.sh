@@ -53,7 +53,7 @@ for NETWORK in $(cat $SUBNETS_FILE | grep -Po '\K[^"][A-Z_]{1,9}(?=")'); do
   update_ip_in_ifcfg_for "${NETWORK}"
 done
 
-sed -i "s/BONDING_SLAVE_0=mgmt1/BONDING_SLAVE_0=eth1/" $SANDBOX_DIR/network/ifcfg-bond0
+sed -i "s/BONDING_SLAVE_0=mgmt0/BONDING_SLAVE_0=eth1/" $SANDBOX_DIR/network/ifcfg-bond0
 sed -i "s/BONDING_SLAVE_1=mgmt1/BONDING_SLAVE_1=eth2/" $SANDBOX_DIR/network/ifcfg-bond0
 
 # TODO: Set connect and set the HSN interface.
