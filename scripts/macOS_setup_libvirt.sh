@@ -83,6 +83,12 @@ else
     vagrant plugin update vagrant-libvirt
 fi
 
+# Download Goss for automated testing
+if [[ ! -f /usr/local/bin/goss ]]; then
+  curl -L https://github.com/aelsabbahy/goss/releases/latest/download/goss-linux-amd64 -o /usr/local/bin/goss
+  chmod +rx /usr/local/bin/goss
+fi
+
 printf "Checking for presence of user socket [$libvirt_socket] ... "
 if [ ! -S $libvirt_socket ]; then
     echo 'FAILED!'

@@ -32,6 +32,12 @@ vagrant plugin install vagrant-env
 [[ $(vagrant --version) == "Vagrant 2.2.19" ]] && \
     sudo curl -o /opt/vagrant/embedded/gems/2.2.19/gems/vagrant-2.2.19/plugins/hosts/darwin/cap/path.rb https://raw.githubusercontent.com/hashicorp/vagrant/42db2569e32a69e604634462b633bb14ca20709a/plugins/hosts/darwin/cap/path.rb
 
+# Download Goss for automated testing
+if [[ ! -f /usr/local/bin/goss ]]; then
+  curl -L https://github.com/aelsabbahy/goss/releases/latest/download/goss-linux-amd64 -o /usr/local/bin/goss
+  chmod +rx /usr/local/bin/goss
+fi
+
 # Supposedly eliminates the need to type your password to configure NFS mounts per Vagrant docs.
 sudo cat <<-EOF > /etc/sudoers.d/vagrant.conf
 Cmnd_Alias VAGRANT_EXPORTS_ADD = /usr/bin/tee -a /etc/exports
