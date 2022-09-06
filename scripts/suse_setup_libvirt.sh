@@ -92,7 +92,8 @@ enable_and_start kexec-load
     zypper -n ar http://download.opensuse.org/update/leap/15.3/sle/ repo-sle-update-sp3
 zypper refresh repo-sle-update-sp3
 
-# TODO: Add fstab entry for nfs mount to persist after a non-Vagrant restart.
-echo "192.168.56.1:$(cd $THIS_SCRIPTS_DIR/.. && pwd) /vagrant nfs rw,intr,nfsvers=4,proto=tcp 0 0" >> /etc/fstab
+# Add fstab entry for nfs mount to persist after a non-Vagrant restart.
+[[ $(uname) == "Darwin" ]] && NFS_VERS=3 || NFS_VERSION=4
+echo "192.168.56.1:$(cd $THIS_SCRIPTS_DIR/.. && pwd) /vagrant nfs rw,intr,nfsvers=${NFS_VERS},proto=tcp 0 0" >> /etc/fstab
 
 echo "SUCCESS: libvirt_host was successfully provisioned."
