@@ -23,6 +23,8 @@
 #
 set -e
 
+THIS_SCRIPTS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 function enable_and_start() {
     THIS_SERVICE=$1
     systemctl enable $THIS_SERVICE
@@ -91,5 +93,6 @@ enable_and_start kexec-load
 zypper refresh repo-sle-update-sp3
 
 # TODO: Add fstab entry for nfs mount to persist after a non-Vagrant restart.
+echo "192.168.56.1:$(cd $THIS_SCRIPTS_DIR/.. && pwd) /vagrant nfs rw,intr,nfsvers=4,proto=tcp 0 0" >> /etc/fstab
 
 echo "SUCCESS: libvirt_host was successfully provisioned."
