@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # MIT License
 #
 # (C) Copyright 2022 Hewlett Packard Enterprise Development LP
@@ -21,6 +21,7 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 #
+
 set -e
 
 function display_disk_capacity() {
@@ -32,7 +33,7 @@ function display_disk_capacity() {
 function help() {
     cat <<EOH | sed -e 's/^    //';
     Summary:
-    The update_box.sh script determines the latest version of the kubernetes image for a given CSM release.
+    The update_box.sh script determines the latest version of the kubernetes image for a given CSM tag.
     It then downloads it from Artifactory and builds a Vagrant box. Lastly, it deletes your k8s_ncn vm
     and associated volume so that your next boot uses the new image.
 
@@ -45,8 +46,9 @@ function help() {
     - VAGRANT_NCN_USER and VAGRANT_NCN_PASSWORD are necessary to populate ssh credentials into the image.
 
     Args:
-    - [optional, CSM version], e.g. "1.3" determines which CSM version you want to build the image from.
-      Right now, this must be the first argument. If unspecified, will default to "1.3".
+    - [optional, CSM version], e.g. "v1.3.0-beta.50" determines which CSM version tag you want to build the image from.
+      Right now, this must be the first argument. If unspecified, will default to the last tag containing "beta". Refer to
+      https://github.com/Cray-HPE/csm/tags for a list of tags.
     - "--from-existing" skips the Artifactory download in case you are just modifying the existing image.
     - "--help" displays this message.
 EOH
@@ -68,12 +70,14 @@ function exit_w_message() {
     exit 1
 }
 
-[[ ! $(hostname) == "libvirthost" ]] && \
-    exit_w_message "ERROR: This script must be run from within the libvirthost VM. Please run ./start.sh first at the root of this repo."
+[[ $(hostname) == "libvirthost" ]] && \
+    exit_w_message "WARNING: This script runs a lot faster from outside of the libvirt_host VM. Consider running at the root of this repo from the host."
 
 # CSM_TAG name input validation.
-CSM_TAG="${1:-v1.3.0-RC.1}"
-[[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG='v1.3.0-RC.1'
+LATEST_BETA_TAG=$(curl -s https://api.github.com/repos/Cray-HPE/csm/tags | jq -r 'limit(1; .[].name | select( . | contains("beta")))')
+CSM_TAG="${1:-$LATEST_BETA_TAG}"
+[[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG="${LATEST_BETA_TAG}"
+echo "Building image using CSM ${CSM_TAG}..."
 # TODO: Find a way to more precisely track the csm-rpms sha used to build the image
 RELEASE_BRANCH="release/$(echo $CSM_TAG | sed -nE 's/[v,V]([0-9]\.[0-9]).*/\1/p')"
 [[ $(echo $RELEASE_BRANCH) == "release/1.4" ]] && RELEASE_BRANCH=main
@@ -84,9 +88,10 @@ CSM_ASSETS_URL="https://raw.githubusercontent.com/Cray-HPE/csm/$CSM_TAG/assets.s
 
 function purge_old_assets() {
     echo "Destroying related VM and previous artifacts..."
-    cd $SCRIPT_DIR/k8s_ncn
-    [[ $(vagrant status --machine-readable | grep "state,running") ]] && vagrant destroy -f
-    cd $OLDPWD
+    vagrant ssh -- -t <<-K8S_DESTROY
+    cd /vagrant/k8s_ncn
+    [[ $(vagrant status --machine-readable | grep "state,running") ]] && sudo vagrant destroy -f
+K8S_DESTROY
     rm -rf $STAGE_DIR
     rm -rf $BOOT_DIR
 }
@@ -105,6 +110,18 @@ function smart_download() {
     done
     # TODO: Fetch and compare the sha to confirm file integrity.
 }
+
+function run_in_vagrant() {
+    TMP_SCRIPT=$STAGE_DIR/temp_script.sh
+    echo '#!/usr/bin/env bash' > $TMP_SCRIPT
+    echo 'set -ex' >> $TMP_SCRIPT
+    while read -r line; do echo -e $line >> $TMP_SCRIPT; done;
+    chmod +x $STAGE_DIR/temp_script.sh
+    vagrant ssh -c "cd ${FROM_DIRECTORY} && sudo /vagrant/images/temp_script.sh"
+}
+
+# Start Libvirthost if not started so we can use virt-customize to modify the image.
+$SCRIPT_DIR/start.sh
 
 # Prepare asset directories
 [[ $FROM_EXISTING == 1 ]] || purge_old_assets
@@ -150,31 +167,36 @@ cat <<-EOF > $STAGE_DIR/metadata.json
 EOF
 # NOTE FOR ABOVE ^: virtual_size must be larger than the original size of 46, otherwise the partitions are destroyed.
 
-# Modify image so it boots in Vagrant correctly.
-ZYPPER_CACHE=/var/cache/zypp/packages
+.
 echo "Preparing image for libvirt boot..."
-[[ $(zypper repos | grep repo-sle-update-sp3) ]] || \
+# Modify image so it boots in Vagrant correctly. Use escaped dollar signs for commands running in libvirt_host.
+run_in_vagrant <<-EOS
+export ZYPPER_CACHE=/var/cache/zypp/packages
+[[ \$(zypper repos | grep repo-sle-update-sp3) ]] || \
     zypper -n ar http://download.opensuse.org/update/leap/15.3/sle/ repo-sle-update-sp3
-[[ -f $(find $ZYPPER_CACHE -name qemu-guest-agent*) ]] || \
+[[ -f \$(find \$ZYPPER_CACHE -name qemu-guest-agent*) ]] || \
     zypper -n install -d --from repo-sle-update-sp3 --oldpackage qemu-guest-agent-5.2.0-150300.115.2.x86_64
 
 LIBGUESTFS_DEBUG=1 sudo virt-customize \
     -a /vagrant/images/box.img --network \
     --append-line /etc/fstab:"192.168.122.1:/vagrant/guest_mount /vagrant nfs rw,intr,nfsvers=4,proto=tcp 0 0" \
-    --copy-in $(find $ZYPPER_CACHE -name liburing*):/tmp/ \
-    --copy-in $(find $ZYPPER_CACHE -name qemu-guest-agent*):/tmp/ \
+    --copy-in \$(find \$ZYPPER_CACHE -name liburing*):/tmp/ \
+    --copy-in \$(find \$ZYPPER_CACHE -name qemu-guest-agent*):/tmp/ \
     --root-password password:${VAGRANT_NCN_PASSWORD} \
     --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true' \
-    --run-command 'for PACKAGE in $(ls /tmp/*.rpm); do [[ $(rpm -qi $PACKAGE) ]] || rpm -i $PACKAGE; done' \
+    --run-command 'for PACKAGE in $(ls /tmp/*.rpm); do [[ \$(rpm -qi \$PACKAGE) ]] || rpm -i \$PACKAGE; done' \
     --run-command 'rm /tmp/*.rpm' \
     --run-command 'systemctl disable kubelet cray-heartbeat spire-agent' \
     --run-command 'mv /etc/cloud/cloud.cfg.d /etc/cloud/cloud.cfg.d.bak && mkdir -p /etc/cloud/cloud.cfg.d' \
     --write /etc/cray/vagrant_image.bom:"CSM_TAG=${CSM_TAG}\nQCOW2_SOURCE=${QCOW2_URL}\nINITRD_SOURCE=${KUBERNETES_ASSETS[2]}\nKERNEL_SOURCE=${KUBERNETES_ASSETS[1]}\nRELEASE_BRANCH=${RELEASE_BRANCH}" \
-    --run-command 'echo -e "$(cat /etc/cray/vagrant_image.bom)" > /etc/cray/vagrant_image.bom'
-
+    --run-command 'echo -e "\$(cat /etc/cray/vagrant_image.bom)" > /etc/cray/vagrant_image.bom'
+EOS
 # Create the vagrant box.
 echo "Creating a tarball of Vagrant assets. This may take a 5-10 minutes without console feedback."
 cd $STAGE_DIR
 tar cvf ${BOX_NAME}.box metadata.json Vagrantfile $IMAGE_NAME
 cd $OLDPWD
-vagrant box add --name ${BOX_NAME} $STAGE_DIR/${BOX_NAME}.box --force
+vagrant ssh -- -t <<-EOC
+    vagrant box remove ${BOX_NAME} || true
+    vagrant box add --name ${BOX_NAME} /vagrant/images/${BOX_NAME}.box --force
+EOC
