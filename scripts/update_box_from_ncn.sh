@@ -48,8 +48,10 @@ function exit_w_message() {
 
 
 # CSM_TAG name input validation.
-CSM_TAG="${1:-v1.3.0-RC.1}"
-[[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG='v1.3.0-RC.1'
+LATEST_BETA_TAG=$(curl -s https://api.github.com/repos/Cray-HPE/csm/tags | jq -r 'limit(1; .[].name | select( . | contains("beta")))')
+CSM_TAG="${1:-$LATEST_BETA_TAG}"
+[[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG="${LATEST_BETA_TAG}"
+echo "Building image using CSM ${CSM_TAG}..."
 # TODO: Find a way to more precisely track the csm-rpms sha used to build the image
 RELEASE_BRANCH="release/$(echo $CSM_TAG | sed -nE 's/[v,V]([0-9]\.[0-9]).*/\1/p')"
 [[ $(echo $RELEASE_BRANCH) == "release/1.4" ]] && RELEASE_BRANCH=main
