@@ -21,11 +21,11 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 REQUIRED_PLUGINS = %w(vagrant-libvirt vagrant-env)
-exit unless REQUIRED_PLUGINS.all? do |plugin|
+exit 1 unless REQUIRED_PLUGINS.all? do |plugin|
   Vagrant.has_plugin?(plugin) || (
     puts "The #{plugin} plugin is required. Please install it with:"
     puts "$ vagrant plugin install #{plugin}"
-    false
+    true
   )
 end
 ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'

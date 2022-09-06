@@ -21,16 +21,16 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 REQUIRED_PLUGINS = %w(vagrant-env)
-exit unless REQUIRED_PLUGINS.all? do |plugin|
+exit 1 unless REQUIRED_PLUGINS.all? do |plugin|
   Vagrant.has_plugin?(plugin) || (
     puts "The #{plugin} plugin is required. Please install it with:"
     puts "$ vagrant plugin install #{plugin}"
-    false
+    true
   )
 end
 
 if RbConfig::CONFIG['host_os'].match?(/^darwin/)
-    nfs_use_udp = true
+    nfs_use_udp = false
     nfs_vers = 3
 else
     nfs_use_udp = false
