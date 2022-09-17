@@ -1,5 +1,11 @@
 pipeline {
   agent any
+  environment {
+    ARTIFACTORY_USER = credentials('ARTIFACTORY_USER')
+    ARTIFACTORY_TOKEN = credentials('ARTIFACTORY_TOKEN')
+    VAGRANT_NCN_USER = credentials('VAGRANT_NCN_USER')
+    VAGRANT_NCN_PASS = credentials('VAGRANT_NCN_PASSWORD')
+  }
   stages {
     stage('Create Virtualbox Libvirt Host') {
       steps {

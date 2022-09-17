@@ -22,6 +22,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 set -e
+set +x
 
 ENV_HANDLER_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ENV_FILE=$ENV_HANDLER_DIR/../.env
@@ -33,6 +34,11 @@ fi
 SED_COMMAND="sed -i"
 [[ $(uname) == "Darwin" ]] && SED_COMMAND="sed -i ''"
 
+# Populate initial values for noninteractive sessions if they exist
+[[ ! -z $ARTIFACTORY_USER ]] && $SED_COMMAND "s/ARTIFACTORY_USER=/ARTIFACTORY_USER=${ARTIFACTORY_USER}/g" $ENV_FILE
+[[ ! -z $ARTIFACTORY_TOKEN ]] && $SED_COMMAND "s/ARTIFACTORY_TOKEN=/ARTIFACTORY_TOKEN=\"${ARTIFACTORY_TOKEN}\"/g" $ENV_FILE
+[[ ! -z $VAGRANT_NCN_USER ]] && $SED_COMMAND "s/export VAGRANT_NCN_USER=/export VAGRANT_NCN_USER=${VAGRANT_NCN_USER}/g" $ENV_FILE
+[[ ! -z $VAGRANT_NCN_PASS ]] && $SED_COMMAND "s/export VAGRANT_NCN_PASSWORD=/export VAGRANT_NCN_PASSWORD=\"${VAGRANT_NCN_PASS}\"/g" $ENV_FILE
 source $ENV_FILE
 
 if [[ -z "${ARTIFACTORY_USER}" || -z "${ARTIFACTORY_TOKEN}" ]]; then
