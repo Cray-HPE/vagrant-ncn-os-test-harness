@@ -167,7 +167,6 @@ cat <<-EOF > $STAGE_DIR/metadata.json
 EOF
 # NOTE FOR ABOVE ^: virtual_size must be larger than the original size of 46, otherwise the partitions are destroyed.
 
-.
 echo "Preparing image for libvirt boot..."
 # Modify image so it boots in Vagrant correctly. Use escaped dollar signs for commands running in libvirt_host.
 run_in_vagrant <<-EOS
@@ -200,3 +199,4 @@ vagrant ssh -- -t <<-EOC
     vagrant box remove ${BOX_NAME} || true
     vagrant box add --name ${BOX_NAME} /vagrant/images/${BOX_NAME}.box --force
 EOC
+
