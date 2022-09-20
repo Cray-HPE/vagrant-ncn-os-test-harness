@@ -19,7 +19,7 @@ pipeline {
     }
     stage('Launch K8s VM in Libvirt Host') {
       steps {
-        sh 'cd k8s_ncn && ./start.sh'
+        sh 'vagrant ssh -c "cd /vagrant/k8s_ncn && ./start.sh"'
       }
     }
   }
