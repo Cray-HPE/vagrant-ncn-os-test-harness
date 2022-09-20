@@ -183,7 +183,7 @@ LIBGUESTFS_DEBUG=1 sudo virt-customize \
     --copy-in \$(find \$ZYPPER_CACHE -name qemu-guest-agent*):/tmp/ \
     --root-password password:${VAGRANT_NCN_PASSWORD} \
     --run-command 'zypper -n remove dracut-metal-dmk8s dracut-metal-luksetcd dracut-metal-mdsquash || true' \
-    --run-command 'for PACKAGE in $(ls /tmp/*.rpm); do [[ \$(rpm -qi \$PACKAGE) ]] || rpm -i \$PACKAGE; done' \
+    --run-command 'for PACKAGE in \$(ls /tmp/*.rpm); do [[ \$(rpm -qi \$PACKAGE) ]] || rpm -i \$PACKAGE; done' \
     --run-command 'rm /tmp/*.rpm' \
     --run-command 'systemctl disable kubelet cray-heartbeat spire-agent' \
     --run-command 'mv /etc/cloud/cloud.cfg.d /etc/cloud/cloud.cfg.d.bak && mkdir -p /etc/cloud/cloud.cfg.d' \
