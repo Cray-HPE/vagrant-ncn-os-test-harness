@@ -23,4 +23,10 @@ pipeline {
       }
     }
   }
+  post {
+    success {
+      echo 'Remove VM and configuration if successful. Leave it running to debugging if not.'
+      sh 'scripts/cleanup.sh'
+    }
+  }
 }
