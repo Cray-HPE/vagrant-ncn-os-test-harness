@@ -7,6 +7,11 @@ pipeline {
     VAGRANT_NCN_PASS = credentials('VAGRANT_NCN_PASSWORD')
   }
   stages {
+    stage('Purge assets from previous builds.') {
+      steps {
+        sh 'scripts/cleanup.sh'
+      }
+    }
     stage('Create Virtualbox Libvirt Host') {
       steps {
         sh './start.sh'
