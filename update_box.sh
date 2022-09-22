@@ -23,12 +23,14 @@
 #
 
 set -e
-
-function display_disk_capacity() {
-    FREE_DISK_SPACE=$(df -kh . | tail -n1 | awk '{print $4}')
-    echo "This operation requires about 40GB of free hard drive space. If you see write errors, please check that you have free capacity."
-    echo "------ You currently have ${FREE_DISK_SPACE} of free disk space. ------"
-}
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $SCRIPT_DIR/scripts/lib/*
+source $SCRIPT_DIR/scripts/env_handler.sh
+cd $SCRIPT_DIR
+STAGE_DIR=$SCRIPT_DIR/images
+BOOT_DIR=$SCRIPT_DIR/boot
+IMAGE_NAME=box.img
+BOX_NAME=k8s_ncn
 
 function help() {
     cat <<EOH | sed -e 's/^    //';
@@ -56,35 +58,22 @@ EOH
 
 [[ $1  == '--from-existing' || $2 == '--from-existing' ]] && FROM_EXISTING=1 || FROM_EXISTING=0 # Skips downloading new artifacts.
 [[ $1 == '--help' || $2 == '--help' ]] && help && exit 0;
-
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $SCRIPT_DIR
-STAGE_DIR=$SCRIPT_DIR/images
-BOOT_DIR=$SCRIPT_DIR/boot
-IMAGE_NAME=box.img
-BOX_NAME=k8s_ncn
-source $SCRIPT_DIR/scripts/env_handler.sh
-
-function exit_w_message() {
-    echo $1
-    exit 1
-}
-
 [[ $(hostname) == "libvirthost" ]] && \
     exit_w_message "WARNING: This script runs a lot faster from outside of the libvirt_host VM. Consider running at the root of this repo from the host."
 
-# CSM_TAG name input validation.
-LATEST_BETA_TAG=$(curl -s https://api.github.com/repos/Cray-HPE/csm/tags | jq -r 'limit(1; .[].name | select( . | contains("beta")))')
+# CSM_TAG to latest beta version if not specified, and make sure it's not a different script arg.
+LATEST_BETA_TAG=$(get_latest_beta_version)
 CSM_TAG="${1:-$LATEST_BETA_TAG}"
 [[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG="${LATEST_BETA_TAG}"
-echo "Building image using CSM ${CSM_TAG}..."
-# TODO: Find a way to more precisely track the csm-rpms sha used to build the image
-RELEASE_BRANCH="release/$(echo $CSM_TAG | sed -nE 's/[v,V]([0-9]\.[0-9]).*/\1/p')"
-[[ $(echo $RELEASE_BRANCH) == "release/1.4" ]] && RELEASE_BRANCH=main
-CSM_ASSETS_URL="https://raw.githubusercontent.com/Cray-HPE/csm/$CSM_TAG/assets.sh"
-[[ $(curl -LI ${CSM_ASSETS_URL} -o /dev/null -w '%{http_code}\n' -s) == "200" ]] || \
-    exit_w_message "Please provide a valid CSM tag as the first argument. Refer to https://github.com/Cray-HPE/csm/tags"
 
+echo "Building image using CSM ${CSM_TAG}..."
+
+RELEASE_BRANCH=$(get_release_branch_from_tag $CSM_TAG)
+# Produces array KUBERNETES_ASSETS coming from assets.sh in CSM repo.
+get_k8s_ncn_artifact_urls $CSM_TAG
+K8S_KERNEL_URL=${KUBERNETES_ASSETS[1]}
+K8S_INITRD_URL=${KUBERNETES_ASSETS[2]}
+QCOW2_URL=$(get_k8s_ncn_qcow2_url ${KUBERNETES_ASSETS[0]})
 
 function purge_old_assets() {
     echo "Destroying related VM and previous artifacts..."
@@ -96,30 +85,6 @@ K8S_DESTROY
     rm -rf $BOOT_DIR
 }
 
-function smart_download() {
-    PATH_LOCAL_FILE=$1
-    DOWNLOAD_URL=$2
-    echo "Downloading image from $DOWNLOAD_URL"
-    if [[ -f $PATH_LOCAL_FILE ]]; then
-        echo "File $PATH_LOCAL_FILE exists. Determining point to resume download from."
-    fi
-    until curl -C - -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $PATH_LOCAL_FILE $DOWNLOAD_URL
-    do
-        echo "Resuming download..."
-        sleep 1
-    done
-    # TODO: Fetch and compare the sha to confirm file integrity.
-}
-
-function run_in_vagrant() {
-    TMP_SCRIPT=$STAGE_DIR/temp_script.sh
-    echo '#!/usr/bin/env bash' > $TMP_SCRIPT
-    echo 'set -ex' >> $TMP_SCRIPT
-    while read -r line; do echo -e $line >> $TMP_SCRIPT; done;
-    chmod +x $STAGE_DIR/temp_script.sh
-    vagrant ssh -c "cd ${FROM_DIRECTORY} && sudo /vagrant/images/temp_script.sh"
-}
-
 # Start Libvirthost if not started so we can use virt-customize to modify the image.
 $SCRIPT_DIR/start.sh
 
@@ -129,43 +94,11 @@ mkdir -p $STAGE_DIR
 mkdir -p $BOOT_DIR
 display_disk_capacity
 
-# Determine correct version of image and begin downloading.
-    echo "Referencing image at CSM tag $CSM_TAG: $CSM_ASSETS_URL"
-    source /dev/stdin < <(curl -fsSL $CSM_ASSETS_URL | grep -E -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
-    QCOW2_URL=$(echo ${KUBERNETES_ASSETS[0]} | sed 's/squashfs/qcow2/g')
 if [[ $FROM_EXISTING == 0 ]]; then
     smart_download $STAGE_DIR/$IMAGE_NAME $QCOW2_URL
-    smart_download $BOOT_DIR/k8s_ncn.kernel ${KUBERNETES_ASSETS[1]}
-    smart_download $BOOT_DIR/k8s_ncn_initrd.xz ${KUBERNETES_ASSETS[2]}
+    smart_download $BOOT_DIR/k8s_ncn.kernel $K8S_KERNEL_URL
+    smart_download $BOOT_DIR/k8s_ncn_initrd.xz $K8S_INITRD_URL
 fi
-
-# Create a Vagrant box.
-cat <<-EOF > $STAGE_DIR/Vagrantfile
-Vagrant.configure("2") do |config|
-    config.vm.provider :libvirt do |libvirt|
-        libvirt.driver = "kvm"
-        libvirt.host = 'localhost'
-        libvirt.uri = 'qemu:///session'
-    end
-    config.vm.define "new" do |custombox|
-        custombox.vm.box = "${BOX_NAME}"
-        custombox.vm.provider :libvirt do |test|
-            test.memory = 2048
-            test.cpus = 2
-        end
-    end
-end
-EOF
-cat <<-EOF > $STAGE_DIR/metadata.json
-{
-    "name": "csm/k8s_ncn_${CSM_TAG}",
-    "description": "This box contains a libvirt qcow2 image for testing the CSM K8s NCN image.",
-    "provider": "libvirt",
-    "format": "qcow2",
-    "virtual_size": 50
-}
-EOF
-# NOTE FOR ABOVE ^: virtual_size must be larger than the original size of 46, otherwise the partitions are destroyed.
 
 echo "Preparing image for libvirt boot..."
 # Modify image so it boots in Vagrant correctly. Use escaped dollar signs for commands running in libvirt_host.
@@ -187,14 +120,10 @@ LIBGUESTFS_DEBUG=1 sudo virt-customize \
     --run-command 'rm /tmp/*.rpm' \
     --run-command 'systemctl disable kubelet cray-heartbeat spire-agent' \
     --run-command 'mv /etc/cloud/cloud.cfg.d /etc/cloud/cloud.cfg.d.bak && mkdir -p /etc/cloud/cloud.cfg.d' \
-    --write /etc/cray/vagrant_image.bom:"CSM_TAG=${CSM_TAG}\nQCOW2_SOURCE=${QCOW2_URL}\nINITRD_SOURCE=${KUBERNETES_ASSETS[2]}\nKERNEL_SOURCE=${KUBERNETES_ASSETS[1]}\nRELEASE_BRANCH=${RELEASE_BRANCH}" \
+    --write /etc/cray/vagrant_image.bom:"CSM_TAG=${CSM_TAG}\nQCOW2_SOURCE=${QCOW2_URL}\nINITRD_SOURCE=${K8S_INITRD_URL}\nKERNEL_SOURCE=${K8S_KERNEL_URL}\nRELEASE_BRANCH=${RELEASE_BRANCH}" \
     --run-command 'echo -e "\$(cat /etc/cray/vagrant_image.bom)" > /etc/cray/vagrant_image.bom'
 EOS
-# Create the vagrant box.
-echo "Creating a tarball of Vagrant assets. This may take a 5-10 minutes without console feedback."
-cd $STAGE_DIR
-tar cvf ${BOX_NAME}.box metadata.json Vagrantfile $IMAGE_NAME
-cd $OLDPWD
+create_vagrant_box $CSM_TAG $BOX_NAME $IMAGE_NAME $STAGE_DIR
 vagrant ssh -- -t <<-EOC
     vagrant box remove ${BOX_NAME} || true
     vagrant box add --name ${BOX_NAME} /vagrant/images/${BOX_NAME}.box --force

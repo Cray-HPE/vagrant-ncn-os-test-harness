@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# vi: set ft=bash
 # MIT License
 #
 # (C) Copyright 2022 Hewlett Packard Enterprise Development LP
@@ -21,12 +21,30 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 #
-set -ex
-THIS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd $THIS_DIR/..
-vagrant destroy -f || true
-[[ -f .env ]] && rm .env
-rm -rf images
-rm -rf boot
-cd $OLDPWD
+
+function display_disk_capacity() {
+    FREE_DISK_SPACE=$(df -kh . | tail -n1 | awk '{print $4}')
+    echo "This operation requires about 40GB of free hard drive space. If you see write errors, please check that you have free capacity."
+    echo "------ You currently have ${FREE_DISK_SPACE} of free disk space. ------"
+}
+
+function smart_download() {
+    PATH_LOCAL_FILE=$1
+    DOWNLOAD_URL=$2
+    echo "Downloading image from $DOWNLOAD_URL"
+    if [[ -f $PATH_LOCAL_FILE ]]; then
+        echo "File $PATH_LOCAL_FILE exists. Determining point to resume download from."
+    fi
+    until curl -C - -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $PATH_LOCAL_FILE $DOWNLOAD_URL
+    do
+        echo "Resuming download..."
+        sleep 1
+    done
+    # TODO: Fetch and compare the sha to confirm file integrity.
+}
+
+function exit_w_message() {
+    echo $1
+    exit 1
+}
 
