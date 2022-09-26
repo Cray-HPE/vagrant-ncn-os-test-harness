@@ -22,15 +22,15 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 
-set -e
+set -ex
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source $SCRIPT_DIR/scripts/lib/*
+for LIB in $SCRIPT_DIR/scripts/lib/*; do source $LIB; done
 source $SCRIPT_DIR/scripts/env_handler.sh
 cd $SCRIPT_DIR
-STAGE_DIR=$SCRIPT_DIR/images
-BOOT_DIR=$SCRIPT_DIR/boot
-IMAGE_NAME=box.img
-BOX_NAME=k8s_ncn
+export STAGE_DIR=$SCRIPT_DIR/images
+export BOOT_DIR=$SCRIPT_DIR/boot
+export IMAGE_NAME=box.img
+export BOX_NAME=k8s_ncn
 
 function help() {
     cat <<EOH | sed -e 's/^    //';
@@ -65,7 +65,7 @@ EOH
 LATEST_BETA_TAG=$(get_latest_beta_version)
 CSM_TAG="${1:-$LATEST_BETA_TAG}"
 [[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG="${LATEST_BETA_TAG}"
-
+export CSM_TAG
 echo "Building image using CSM ${CSM_TAG}..."
 
 RELEASE_BRANCH=$(get_release_branch_from_tag $CSM_TAG)
