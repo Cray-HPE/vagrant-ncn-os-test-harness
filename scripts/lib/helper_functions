@@ -1,0 +1,50 @@
+# vi: set ft=bash
+# MIT License
+#
+# (C) Copyright 2022 Hewlett Packard Enterprise Development LP
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
+
+function display_disk_capacity() {
+    FREE_DISK_SPACE=$(df -kh . | tail -n1 | awk '{print $4}')
+    echo "This operation requires about 40GB of free hard drive space. If you see write errors, please check that you have free capacity."
+    echo "------ You currently have ${FREE_DISK_SPACE} of free disk space. ------"
+}
+
+function smart_download() {
+    PATH_LOCAL_FILE=$1
+    DOWNLOAD_URL=$2
+    echo "Downloading image from $DOWNLOAD_URL"
+    if [[ -f $PATH_LOCAL_FILE ]]; then
+        echo "File $PATH_LOCAL_FILE exists. Determining point to resume download from."
+    fi
+    until curl -C - -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $PATH_LOCAL_FILE $DOWNLOAD_URL
+    do
+        echo "Resuming download..."
+        sleep 1
+    done
+    # TODO: Fetch and compare the sha to confirm file integrity.
+}
+
+function exit_w_message() {
+    echo $1
+    exit 1
+}
+

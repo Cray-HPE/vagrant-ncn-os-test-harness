@@ -3,6 +3,8 @@ set -e
 
 THIS_SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $THIS_SCRIPT_DIR/scripts/env_handler.sh
+[[ $(vagrant plugin list | grep vagrant-env) ]] || vagrant plugin install vagrant-env
+[[ $(vagrant plugin list | grep vagrant-libvirt) ]] || vagrant plugin install vagrant-libvirt
 
 # Refresh ssh key in case libvirt_host has been recreated.
 ssh-keygen -R $LIBVIRT_HOST_IP > /dev/null 2>&1 || true

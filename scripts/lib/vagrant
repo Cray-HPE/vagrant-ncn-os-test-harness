@@ -1,0 +1,82 @@
+# vi: set ft=bash
+# MIT License
+#
+# (C) Copyright 2022 Hewlett Packard Enterprise Development LP
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
+
+function run_in_vagrant() {
+    TMP_SCRIPT=$STAGE_DIR/temp_script.sh
+    echo '#!/usr/bin/env bash' > $TMP_SCRIPT
+    echo 'set -ex' >> $TMP_SCRIPT
+    while read -r line; do echo -e $line >> $TMP_SCRIPT; done;
+    chmod +x $STAGE_DIR/temp_script.sh
+    vagrant ssh -c "cd ${FROM_DIRECTORY} && sudo /vagrant/images/temp_script.sh"
+}
+
+function create_box_vagrantfile() {
+  BOX_NAME=$1
+  STAGE_DIR=$2
+  cat <<-EOF > $STAGE_DIR/Vagrantfile
+Vagrant.configure("2") do |config|
+    config.vm.provider :libvirt do |libvirt|
+        libvirt.driver = "kvm"
+        libvirt.host = 'localhost'
+        libvirt.uri = 'qemu:///session'
+    end
+    config.vm.define "new" do |custombox|
+        custombox.vm.box = "${BOX_NAME}"
+        custombox.vm.provider :libvirt do |test|
+            test.memory = 2048
+            test.cpus = 2
+        end
+    end
+end
+EOF
+}
+
+function create_box_metadata() {
+  CSM_TAG=$1
+  STAGE_DIR=$2
+  cat <<-EOF > $STAGE_DIR/metadata.json
+{
+    "name": "csm/k8s_ncn_${CSM_TAG}",
+    "description": "This box contains a libvirt qcow2 image for testing the CSM K8s NCN image.",
+    "provider": "libvirt",
+    "format": "qcow2",
+    "virtual_size": 50
+}
+EOF
+# NOTE FOR ABOVE ^: virtual_size must be larger than the original size of 46, otherwise the partitions are destroyed.
+}
+
+function create_vagrant_box() {
+  CSM_TAG=$1
+  BOX_NAME=$2
+  IMAGE_NAME=$3
+  STAGE_DIR=$4
+  echo "Creating a tarball of Vagrant assets. This may take a 5-10 minutes without console feedback."
+  create_box_vagrantfile $BOX_NAME $STAGE_DIR
+  create_box_metadata $CSM_TAG $STAGE_DIR
+  cd $STAGE_DIR
+  tar cvf ${BOX_NAME}.box metadata.json Vagrantfile $IMAGE_NAME
+  cd $OLDPWD
+}
+
