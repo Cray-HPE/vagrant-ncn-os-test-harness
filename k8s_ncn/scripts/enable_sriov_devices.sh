@@ -14,6 +14,8 @@ function enable_virtual_function_for_dev(){
   setting_file=/sys/class/net/$DEV/device/sriov_numvfs
   if (( $(cat $setting_file) == 0 )); then
     echo 1 > $setting_file
+    echo "Waiting 5 seconds for virtual interface to become enabled. This may not be long enough and you'll need to rerun this script a few times."
+    sleep 5
   fi
 }
 

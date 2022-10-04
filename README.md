@@ -174,11 +174,23 @@ These instructions apply if trying to standup the vagrant environment from an NC
     cd vagrant_ncn_os_test_harness
     ```
 
-1. ***One-time:*** Run the following to install KVM and `libvirt`
+1. ***One-time:*** Run the following to install KVM and `libvirt`. This script rarely gets run, so you will probably have to step through it by hand.
 
     ```bash
-    ./scripts/suse_setup_libvirt.sh
+    ./scripts/configure_ncn.sh
     ```
+
+    Additionally, we'll want to attempt to enable sr-iov network interfaces for the vNCN to use. Run the following script, a few times if it fails.
+
+    ```bash
+    ./k8s_ncn/scripts/enable_sriov_devices.sh
+    ```
+
+   Next, we'll need to generate the network ifcfg files to use an IP address at the end of the range.
+   
+   ```bash
+   ./k8s_ncn/scripts/prepare_network_configuration.sh
+   ```
 
 1. ***As needed:*** Run this to create the vagrant box
 
@@ -192,20 +204,33 @@ These instructions apply if trying to standup the vagrant environment from an NC
     cd k8s_ncn && scripts/start_on_ncn.sh
     ```
 
-1. ***Optional*** If you want to see the console output during boot, you can create a SSH tunnel and VNC to the machine.
+1. Copy in the network configuration files and apply.
+
+   ```bash
+   export VAGRANT_VAGRANTFILE=Vagrantfile.ncn
+   vagrant ssh
+   cp -R /vagrant/sandbox/network/* /etc/sysconfig/network
+   systemctl restart network
+   ```
+
+1. Join the node to Kubernetes. # TODO: Get this working. Currently, m002 is not able to see the vNCNs NMN connection.
+
+   ```bash
+   exit # This line only if you are shelled into the vncn
+   kubeadm token create --print-join-command > sandbox/k8s_join_command
+   chmod +x sandbox/k8s_join_command
+   vagrant ssh
+   /vagrant/sandbox/k8s_join_command
+   ```
+
+1. ***Recommended*** If you want to see the console output during boot, you can create a SSH tunnel and VNC to the machine.
    Run this on your desktop/laptop and then open your VNC app of choice (such as `vncviewer`) and point it to `localhost`.
 
     ```bash
-    ncn_host=ncn-w004
+    ncn_host=ncn-w004 server=surtur-ncn-m001.us.cray.com ssh -N -T -l root -L5900:$ncn_host:5900 $server
     ```
 
-    ```bash
-    server=surtur-ncn-m001.us.cray.com
-    ```
-
-    ```bash
-    ssh -N -T -l root -L5900:$ncn_host:5900 $server
-    ```
+    If successful, it will prompt you for the root password and display no other output. Leave the terminal open and run VNC.
 
 ## Operations
 
