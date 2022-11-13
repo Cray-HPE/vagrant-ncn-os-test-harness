@@ -1,5 +1,27 @@
-#!/usr/bin/env bash
-
+#!/bin/bash
+#
+# MIT License
+#
+# (C) Copyright 2022 Hewlett Packard Enterprise Development LP
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+#
 set -ex
 
 function enable_and_start() {
@@ -8,25 +30,36 @@ function enable_and_start() {
     systemctl start $THIS_SERVICE
 }
 
-zypper -n ar --no-gpgcheck https://download.opensuse.org/distribution/leap/15.3/repo/oss opensuse-oss
-zypper addrepo https://download.opensuse.org/repositories/Virtualization:vagrant:Leap:15.3/openSUSE_Leap_15.3/Virtualization:vagrant:Leap:15.3.repo
+zypper -n ar https://${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}@artifactory.algol60.net/artifactory/sles-mirror/Backports/SLE-15-SP3_x86_64/standard?auth=basic SUSE-Backports-SLE-15-SP3-x86_64
+zypper -n ar https://${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}@artifactory.algol60.net/artifactory/sles-mirror/Products/SLE-Module-Server-Applications/15-SP3/x86_64/product?auth=basic SUSE-SLE-Module-Server-Applications-15-SP3-x86_64-Pool
+zypper -n ar https://${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}@artifactory.algol60.net/artifactory/sles-mirror/Updates/SLE-Module-Server-Applications/15-SP3/x86_64/update?auth=basic SUSE-SLE-Module-Server-Applications-15-SP3-x86_64-Updates
+zypper -n ar https://${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}@artifactory.algol60.net/artifactory/sles-mirror/Products/SLE-Module-Basesystem/15-SP3/x86_64/product?auth=basic SUSE-SLE-Module-Basesystem-15-SP3-x86_64-Pool
+zypper -n ar https://${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}@artifactory.algol60.net/artifactory/sles-mirror/Updates/SLE-Module-Basesystem/15-SP3/x86_64/update?auth=basic SUSE-SLE-Module-Basesystem-15-SP3-x86_64-Updates
+zypper -n --gpg-auto-import-keys refresh
 
-zypper -n refresh
+echo 'Installing KVM packages ... '
 zypper -n install qemu-kvm
 zypper -n install -t pattern \
     kvm_tools \
     kvm_server
+echo 'Installing vagrant-libvirt packages'
 zypper -n install \
     vagrant-libvirt \
-    libguestfs \
     gptfdisk e2fsprogs hostname
 
 # Optional nice-to-have dev utils while we can install them
+echo 'Installing dev tools ...'
 zypper -n install htop tmux neovim
 
+echo 'Installing vagrant-env'
 vagrant plugin install vagrant-env
-zypper -n rr opensuse-oss
-zypper -n rr Virtualization_vagrant_Leap_15.3
+
+echo 'Cleaning up; removing repos ...'
+zypper -n rr SUSE-Backports-SLE-15-SP3-x86_64
+zypper -n rr SUSE-SLE-Module-Server-Applications-15-SP3-x86_64-Pool
+zypper -n rr SUSE-SLE-Module-Server-Applications-15-SP3-x86_64-Updates
+zypper -n rr SUSE-SLE-Module-Basesystem-15-SP3-x86_64-Pool
+zypper -n rr SUSE-SLE-Module-Basesystem-15-SP3-x86_64-Updates
 
 enable_and_start libvirtd
 virt-host-validate

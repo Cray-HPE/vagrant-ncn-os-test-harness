@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # vi: set ft=bash
 # MIT License
 #
@@ -44,7 +46,7 @@ function smart_download() {
 }
 
 function exit_w_message() {
-    echo $1
+    echo >&2 $1
     exit 1
 }
 
