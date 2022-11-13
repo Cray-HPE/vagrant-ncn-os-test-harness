@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # MIT License
 #
 # (C) Copyright 2022 Hewlett Packard Enterprise Development LP
@@ -25,35 +27,35 @@ THIS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $THIS_DIR/helper_functions
 
 function get_latest_beta_version() {
-  curl -s https://api.github.com/repos/Cray-HPE/csm/tags | jq -r 'limit(1; .[].name | select( . | contains("beta")))'
+  curl -f -s https://api.github.com/repos/Cray-HPE/csm/tags | jq -r 'limit(1; .[].name | select( . | contains("beta")))'
 }
 
 function get_release_branch_from_tag() {
-  CSM_TAG=$1
+  csm_tag=$1
   echo "Building image using CSM ${CSM_TAG}..."
-  RELEASE_BRANCH="release/$(echo $CSM_TAG | sed -nE 's/[v,V]([0-9]\.[0-9]).*/\1/p')"
-  [[ $(echo $RELEASE_BRANCH) == "release/1.4" ]] && RELEASE_BRANCH=main
-  echo $RELEASE_BRANCH
+  release_branch="release/$(echo $CSM_TAG | sed -nE 's/[v,V]([0-9]\.[0-9]).*/\1/p')"
+  [[ $(echo $release_branch) == "release/1.4" ]] && release_branch=main
+  echo $release_branch
 }
 
 function get_ncn_assets_url_for_tag() {
-  CSM_TAG=$1
-  CSM_ASSETS_URL="https://raw.githubusercontent.com/Cray-HPE/csm/$CSM_TAG/assets.sh"
-  [[ $(curl -LI ${CSM_ASSETS_URL} -o /dev/null -w '%{http_code}\n' -s) == "200" ]] || \
+  csm_tag=$1
+  csm_assets_url="https://raw.githubusercontent.com/Cray-HPE/csm/${csm_tag}/assets.sh"
+  [[ $(curl -LI ${csm_assets_url} -o /dev/null -w '%{http_code}\n' -s) == "200" ]] || \
     exit_w_message "Please provide a valid CSM tag as the first argument. Refer to https://github.com/Cray-HPE/csm/tags"
-  echo $CSM_ASSETS_URL
+  echo $csm_assets_url
 }
 
 function get_k8s_ncn_artifact_urls() {
-  CSM_TAG=$1
-  CSM_ASSETS_URL=$(get_ncn_assets_url_for_tag $CSM_TAG)
-  echo "Referencing image at CSM tag $CSM_TAG: $CSM_ASSETS_URL"
-  source /dev/stdin < <(curl -fsSL $CSM_ASSETS_URL | grep -E -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
+  csm_tag=$1
+  csm_assets_url=$(get_ncn_assets_url_for_tag $CSM_TAG)
+  echo "Referencing image at CSM tag $csm_tag: $csm_assets_url"
+  source /dev/stdin < <(curl -fsSL $csm_assets_url | grep -E -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
   export KUBERNETES_ASSETS
 }
 
-function get_k8s_ncn_qcow2_url() {
-  SQUASHFS_URL=$1
-  QCOW2_URL=$(echo $SQUASHFS_URL | sed 's/squashfs/qcow2/g')
-  echo $QCOW2_URL
+function get_box_url() {
+  squashfs_url=$1
+  box_url="$(basename $squashfs_url .squashfs)".box
+  echo $box_url
 }
