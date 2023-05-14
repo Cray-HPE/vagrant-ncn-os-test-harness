@@ -41,6 +41,7 @@ zypper -n install \
     vagrant-libvirt=0.7.0-bp154.1.101 \
     libguestfs=1.44.2-150400.3.3.1 \
     nginx gptfdisk e2fsprogs hostname tmux vim htop wget
+
 vagrant plugin install vagrant-env
 
 enable_and_start libvirtd
@@ -48,8 +49,14 @@ virt-host-validate
 
 mkdir -p /root/.ssh
 cp /home/vagrant/.ssh/authorized_keys /root/.ssh/
-cp /vagrant/.vagrant/machines/default/virtualbox/private_key /root/.ssh/
-cp /vagrant/.vagrant/machines/default/virtualbox/private_key /home/vagrant/.ssh/
+# [[ $(cat /proc/modules | grep vboxdrv) ]] && HYPERVISOR=virtualbox || HYPERVISOR=libvirt
+# cp /vagrant/.vagrant/machines/default/$HYPERVISOR/private_key /root/.ssh/
+# cp /vagrant/.vagrant/machines/default/$HYPERVISOR/private_key /home/vagrant/.ssh/
+
+# Move vagrant box directory to NFS mount
+[[ ! -d /vagrant/images/.vagrant.d ]] && mv /home/vagrant/.vagrant.d /vagrant/images/
+rm -rf /home/vagrant/.vagrant.d && ln -s /vagrant/images/.vagrant.d /home/vagrant/.vagrant.d
+rm -rf /root/.vagrant.d && ln -s /vagrant/images/.vagrant.d /root/.vagrant.d
 
 if [[ ! $(virsh net-list | grep default | grep active) ]]; then
     virsh net-start default
@@ -67,23 +74,21 @@ function create_virt_pool() {
     fi
 }
 
-# TODO: Map the storage pool to the host NFS mount to bypass the need for a redundant box upload.
-create_virt_pool "default" "/home/vagrant/pool"
+create_virt_pool "default" "/vagrant/images/libvirt_pool"
 create_virt_pool "vagrant_images" "/vagrant/images"
 
-if [[ ! $(cat /etc/exports | grep guest_mount) ]]; then
-    echo "/vagrant *(rw,sync,insecure,root_squash,no_subtree_check,fsid=25)" >> /etc/exports
-fi
+# if [[ ! $(cat /etc/exports | grep guest_mount) ]]; then
+#     echo "/vagrant *(rw,sync,insecure,root_squash,no_subtree_check,fsid=25)" >> /etc/exports
+# fi
 
 mkdir -p /vagrant/guest_mount
 
 rm -rf /srv/www/htdocs
 ln -s /vagrant/htdocs /srv/www/htdocs
 
-enable_and_start nfs-server
 enable_and_start nginx
-enable_and_start vboxadd-service
-enable_and_start kexec-load
+[[ $HYPERVISOR == "virtualbox" ]] && enable_and_start vboxadd-service
+# enable_and_start kexec-load
 # TODO: set crashkernel kernel param for kdump
 #enable_and_start kdump
 

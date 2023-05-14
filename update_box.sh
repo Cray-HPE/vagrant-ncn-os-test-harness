@@ -70,7 +70,7 @@ echo "Building image using CSM ${CSM_TAG}..."
 
 RELEASE_BRANCH=$(get_release_branch_from_tag $CSM_TAG)
 # Produces array KUBERNETES_ASSETS coming from assets.sh in CSM repo.
-get_k8s_ncn_artifact_urls $CSM_TAG
+ get_ncn_assets_vars $CSM_TAG
 K8S_KERNEL_URL=${KUBERNETES_ASSETS[1]}
 K8S_INITRD_URL=${KUBERNETES_ASSETS[2]}
 QCOW2_URL=$(get_k8s_ncn_qcow2_url ${KUBERNETES_ASSETS[0]})

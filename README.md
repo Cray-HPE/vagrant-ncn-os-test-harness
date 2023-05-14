@@ -305,7 +305,7 @@ All are performed from the `k8s_ncn/` directory:
 
 #### Downloading the Latest NCN Images
 
-To fetch the latest artfiacts by CSM release, simply run `./update_box.sh` from the repo root directory to fetch the latest image. 
+To fetch the latest artifacts by CSM release, simply run `./update_box.sh` from the repo root directory to fetch the latest image. 
 
 > ***WARNING*** This will destroy your existing `k8s_ncn` VM.
 

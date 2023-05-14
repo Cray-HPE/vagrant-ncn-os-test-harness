@@ -21,18 +21,19 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 
+# The following functions work together to return the qcow2 url by constructing the assets.sh url for a given CSM tag.
 THIS_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $THIS_DIR/helper_functions
 
 function get_latest_beta_version() {
-  curl -s https://api.github.com/repos/Cray-HPE/csm/tags | jq -r 'limit(1; .[].name | select( . | contains("beta")))'
+  # This will need to be modified in the future to crawl multiple pages of responses to find the first beta.
+  curl -s https://api.github.com/repos/Cray-HPE/csm/tags?per_page=100 | jq -r 'limit(1; .[].name | select( . | contains("beta")))'
 }
 
 function get_release_branch_from_tag() {
   CSM_TAG=$1
-  echo "Building image using CSM ${CSM_TAG}..."
   RELEASE_BRANCH="release/$(echo $CSM_TAG | sed -nE 's/[v,V]([0-9]\.[0-9]).*/\1/p')"
-  [[ $(echo $RELEASE_BRANCH) == "release/1.4" ]] && RELEASE_BRANCH=main
+  [[ $(echo $RELEASE_BRANCH) == "release/1.5" ]] && RELEASE_BRANCH=main
   echo $RELEASE_BRANCH
 }
 
@@ -44,12 +45,16 @@ function get_ncn_assets_url_for_tag() {
   echo $CSM_ASSETS_URL
 }
 
-function get_k8s_ncn_artifact_urls() {
+function get_ncn_assets_vars() {
   CSM_TAG=$1
   CSM_ASSETS_URL=$(get_ncn_assets_url_for_tag $CSM_TAG)
   echo "Referencing image at CSM tag $CSM_TAG: $CSM_ASSETS_URL"
-  source /dev/stdin < <(curl -fsSL $CSM_ASSETS_URL | grep -E -m 1 -A 4 "^KUBERNETES_ASSETS=\(+")
+  # Source the assets.sh stopping at HPE_SIGNING_KEY. This just happens to be how this is formatted right now.
+  source /dev/stdin < <(curl -fsSL $CSM_ASSETS_URL | grep -E -B 999 "^HPE_SIGNING_KEY*")
   export KUBERNETES_ASSETS
+  export PIT_IMAGE_ID
+  export KUBERNETES_IMAGE_ID
+  export STORAGE_CEPH_IMAGE_ID
 }
 
 function get_k8s_ncn_qcow2_url() {

@@ -24,13 +24,15 @@
 
 SCRIPT_DIR=/vagrant
 source /etc/environment
-source /etc/cray/vagrant_image.bom
+# source /etc/cray/vagrant_image.bom
+CSM_RELEASE_BRANCH="${CSM_RELEASE_BRANCH:=main}"
+
 
 function download_file() {
     PATH_LOCAL_FILE=$1
     DOWNLOAD_URL=$2
     echo "Downloading file from $DOWNLOAD_URL"
-    curl -L -u $PATH_LOCAL_FILE $DOWNLOAD_URL
+    sudo curl -L $DOWNLOAD_URL --output $PATH_LOCAL_FILE
 }
 
 function fetch_zypper_repos() {
@@ -43,23 +45,23 @@ function fetch_zypper_repos() {
         suse.template.repos
     )
     for REPO_MANIFEST in ${REPO_MANIFESTS[*]}; do
-        download_file $SCRIPT_DIR/repos/$REPO_MANIFEST "https://raw.githubusercontent.com/Cray-HPE/csm-rpms/${RELEASE_BRANCH}/repos/${REPO_MANIFEST}"
+        download_file $SCRIPT_DIR/repos/$REPO_MANIFEST "https://raw.githubusercontent.com/Cray-HPE/csm-rpms/${CSM_RELEASE_BRANCH}/repos/${REPO_MANIFEST}"
     done
     # Also fetch the script used to populate them.
-    download_file $SCRIPT_DIR/repos/rpm-functions.sh "https://raw.githubusercontent.com/Cray-HPE/csm-rpms/${RELEASE_BRANCH}/scripts/rpm-functions.sh"
-    chmod +x $SCRIPT_DIR/repos/rpm-functions.sh
+    download_file $SCRIPT_DIR/repos/rpm-functions.sh "https://raw.githubusercontent.com/Cray-HPE/csm-rpms/${CSM_RELEASE_BRANCH}/scripts/rpm-functions.sh"
+    sudo chmod +x $SCRIPT_DIR/repos/rpm-functions.sh
     # Silence the echo of credential.
-    sed -i 's/echo "Adding repo ${alias} at ${url}"/# echo "Adding repo ${alias} at ${url}"/g' $SCRIPT_DIR/repos/rpm-functions.sh
+    sudo sed -i 's/echo "Adding repo ${alias} at ${url}"/# echo "Adding repo ${alias} at ${url}"/g' $SCRIPT_DIR/repos/rpm-functions.sh
 }
 fetch_zypper_repos
 
 cd /vagrant/repos
 source ./rpm-functions.sh
-add-cray-repos
-add-google-repos
-add-hpe-repos
-add-suse-repos
-add-fake-conntrack
-zypper lr -e /tmp/repos.repos
+sudo add-cray-repos
+sudo add-google-repos
+sudo add-hpe-repos
+sudo add-suse-repos
+sudo add-fake-conntrack
+sudo zypper lr -e /tmp/repos.repos
 cat /tmp/repos.repos
 cd $OLDPWD
