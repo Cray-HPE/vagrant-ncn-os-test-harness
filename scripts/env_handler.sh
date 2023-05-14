@@ -22,7 +22,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 set -e
-set +x
+#set +x
 
 ENV_HANDLER_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ENV_FILE=$ENV_HANDLER_DIR/../.env
@@ -82,6 +82,14 @@ function interactively_set_credentials() {
     fi
 
     source $ENV_FILE
+}
+
+function set_release_branch() {
+    $SED_COMMAND "s|export CSM_RELEASE_BRANCH=.*|export CSM_RELEASE_BRANCH=\"${1}\"|g" $ENV_FILE
+}
+
+function set_tag() {
+    $SED_COMMAND "s/export CSM_TAG=.*/export CSM_TAG=\"${1}\"/g" $ENV_FILE
 }
 
 [[ -z $ARTIFACTORY_USER || -z $ARTIFACTORY_TOKEN ]] && interactively_set_credentials
