@@ -1,4 +1,4 @@
-!/usr/bin/env bash
+#!/usr/bin/env bash
 # MIT License
 #
 # (C) Copyright 2022 Hewlett Packard Enterprise Development LP
@@ -22,7 +22,7 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #
 
-set -ex
+set -e
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 for LIB in $SCRIPT_DIR/scripts/lib/*; do source $LIB; done
 source $SCRIPT_DIR/scripts/env_handler.sh
@@ -30,9 +30,36 @@ cd $SCRIPT_DIR
 export STAGE_DIR=$SCRIPT_DIR/images
 export BOOT_DIR=$SCRIPT_DIR/boot
 
+function help() {
+    cat <<EOH | sed -e 's/^    //';
+    Summary:
+    The get_ncn_boxes.sh script determines the latest version of the kubernetes image for a given CSM tag. If no
+    tag is specified, either by command line or from the .env file, then the latest beta tag is chosen. It then
+    downloads it from Artifactory and builds a Vagrant box. Lastly, it deletes your k8s_ncn vm and associated 
+    volume so that your next boot uses the new image. The tag used to download is captured in the .env file.
+
+    Requirements:
+    - This script expects to be run from within the libvirthost vm.
+    - $(display_disk_capacity)
+
+    Four environment variables are expected for credentialing. These will be asked for if not found in your .env.
+    - ARTIFACTORY_USER and ARTIFACTORY_TOKEN are necessary to gain access to Artifactory for image download.
+    - VAGRANT_NCN_USER and VAGRANT_NCN_PASSWORD are necessary to populate ssh credentials into the image.
+
+    Args:
+    - [optional, CSM version], e.g. "v1.3.0-beta.50" determines which CSM version tag you want to build the image from.
+      Right now, this must be the first argument. If unspecified, will default to the last tag containing "beta". Refer to
+      https://github.com/Cray-HPE/csm/tags for a list of tags.
+    - "--from-existing" skips the Artifactory download in case you are just modifying the existing image.
+    - "--help" displays this message.
+EOH
+}
+
+[[ $1 == '--help' || $2 == '--help' ]] && help && exit 0;
+
 # CSM_TAG to latest beta version if not specified, and make sure it's not a different script arg.
 LATEST_BETA_TAG=$(get_latest_beta_version)
-CSM_TAG="${1:-$LATEST_BETA_TAG}"
+[[ -z $CSM_TAG ]] && CSM_TAG="${1:-$LATEST_BETA_TAG}"
 [[ $(echo $CSM_TAG | grep -E '^--') ]] && CSM_TAG="${LATEST_BETA_TAG}"
 export CSM_TAG
 

@@ -39,7 +39,7 @@ function smart_download() {
     until curl -C - -L -u "${ARTIFACTORY_USER}:${ARTIFACTORY_TOKEN}" -o $PATH_LOCAL_FILE $DOWNLOAD_URL
     do
         ((attempts+=1))
-        echo "DW - $attempts"
+        echo "Attempts: $attempts"
         if [[ $attempts -gt "14" ]]; then
             echo "Failed 15 times. Aborting download..."
             exit 1
