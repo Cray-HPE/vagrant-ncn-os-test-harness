@@ -7,3 +7,4 @@ nohup.out
 *.box
 guest_mount/*
 .env
+.idea
